@@ -689,11 +689,11 @@ def build_project_ass(
 ) -> Path:
     project = _project if _project is not None else load_project(project_path, resolve_video_duration=True)
     output = Path(output_path) if output_path else derive_ass_path(project_path)
-    transcript = project_to_transcript(project, project_is_validated=True)
+    transcript: dict[str, object] = dict(project_to_transcript(project, project_is_validated=True))
     if _keep_ranges is not None:
         transcript = {
             "segments": retime_segments_for_keep_ranges(
-                transcript["segments"],
+                project_to_transcript(project, project_is_validated=True)["segments"],
                 _keep_ranges,
             )
         }
@@ -702,10 +702,13 @@ def build_project_ass(
         if timeline.has_cuts:
             transcript = {
                 "segments": retime_segments_for_keep_ranges(
-                    transcript["segments"],
+                    project_to_transcript(project, project_is_validated=True)["segments"],
                     timeline.keep_ranges,
                 )
             }
+    raw_speakers = project.get("speakers")
+    if is_object_iterable(raw_speakers):
+        transcript["speakers"] = list(raw_speakers)
     build_ass_from_data(
         transcript,
         str(output),

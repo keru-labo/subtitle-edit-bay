@@ -125,12 +125,13 @@ def build_short_video_ass(
     if not is_object_iterable(raw_speakers):
         raise TypeError("project speakers must be iterable")
     track_colors: dict[str, str] = {}
-    for speaker in raw_speakers:
-        if is_object_dict(speaker) and speaker.get("track_key") and speaker.get("color"):
+    speaker_list = [speaker for speaker in raw_speakers if is_object_dict(speaker)]
+    for speaker in speaker_list:
+        if speaker.get("track_key") and speaker.get("color"):
             track_colors[str(speaker.get("track_key", ""))] = str(speaker.get("color", ""))
 
     ass_text = render_ass(
-        {"segments": remapped_segments},
+        {"segments": remapped_segments, "speakers": speaker_list},
         width=short_video.output.width,
         height=short_video.output.height,
         track_color_map=track_colors,

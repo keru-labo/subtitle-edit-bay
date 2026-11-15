@@ -339,6 +339,7 @@ def merge_transcripts(
                 continue
 
             diarized_speaker = segment.get("speaker")
+            normalized_source_speaker = str(diarized_speaker).strip() if diarized_speaker is not None else ""
             speaker = speaker_for_track(audio_track, diarized_speaker, dynamic_map)
             merged_segment: Segment = {
                 "start": coerce_float(segment["start"]),
@@ -350,7 +351,7 @@ def merge_transcripts(
                 "layout_row": 0,
                 "max_width": max_width_for_speaker(speaker),
                 "source_track": audio_track,
-                "source_speaker": diarized_speaker,
+                "source_speaker": normalized_source_speaker,
                 "words": segment.get("words", []),
             }
             merged_segments.append(merged_segment)

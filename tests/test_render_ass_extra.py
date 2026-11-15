@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from src.render_ass import (
     SubtitleEvent,
@@ -234,6 +235,85 @@ class RenderAssExtraTests(TypedTestCase):
         overrides = build_track_style_overrides(events, speaker_color_map={"clip1": "#AABBCC"})
         self.assertEqual(overrides["Speaker_clip1"], ("Oz", "#AABBCC"))
         self.assertEqual(overrides["ShoutSpeaker_clip1"], ("ShoutOz", "#AABBCC"))
+
+    def test_render_ass_applies_speaker_color_map_without_source_speaker(self) -> None:
+        data: dict[str, object] = {
+            "segments": [
+                {
+                    "start": 0.0,
+                    "end": 1.0,
+                    "text": "手動追加セリフ",
+                    "speaker": "Alice",
+                }
+            ]
+        }
+        ass = render_ass(data, speaker_color_map={"alice": "#00FF00"})
+        self.assertIn("Style: Speaker_Alice,", ass)
+        self.assertIn("&H0000FF00", ass)
+        self.assertIn(",Speaker_Alice,Alice,0,0,", ass)
+
+    def test_render_ass_does_not_treat_none_source_speaker_as_literal_none(self) -> None:
+        data: dict[str, object] = {
+            "segments": [
+                {
+                    "start": 0.0,
+                    "end": 1.0,
+                    "text": "ホスト発話",
+                    "speaker": "Oz",
+                    "source_track": "0:a:1",
+                    "source_speaker": None,
+                }
+            ]
+        }
+        ass = render_ass(data, speaker_color_map={"none": "#FF00FF"})
+        self.assertNotIn("Speaker_None", ass)
+        self.assertIn(",Oz,Oz,0,0,", ass)
+
+    def test_project_track_color_takes_precedence_over_default_speaker_colors(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project: dict[object, object] = {
+                "version": 1,
+                "video": {
+                    "path": "dummy.mp4",
+                    "width": 1920,
+                    "height": 1080,
+                    "fps": 30.0,
+                    "duration": 10.0,
+                },
+                "speakers": [
+                    {
+                        "id": "craig:alice",
+                        "name": "alice",
+                        "file_name": "1-alice.aac",
+                        "style": "Oz",
+                        "color": "#00FF00",
+                        "track_key": "craig:alice",
+                    }
+                ],
+                "segments": [
+                    {
+                        "start": 0.0,
+                        "end": 1.5,
+                        "text": "テスト",
+                        "speaker": "Oz",
+                        "source_file": "1-alice.aac",
+                        "source_speaker": "alice",
+                        "source_track": "craig:alice",
+                    }
+                ],
+                "settings": {},
+            }
+            project_path = Path(tmp) / "subtitle_project.json"
+            ass_path = Path(tmp) / "out.ass"
+
+            def fake_load() -> dict[str, str]:
+                return {"1-alice.aac": "#FF0000", "alice": "#FF0000"}
+
+            with mock.patch("src.render_ass.load_speaker_color_map", side_effect=fake_load):
+                build_project_ass(project_path, output_path=ass_path, _project=project)
+            project_ass = ass_path.read_text(encoding="utf-8")
+            self.assertIn("&H0000FF00", project_ass)
+            self.assertNotIn("&H000000FF", project_ass)
 
 
 if __name__ == "__main__":

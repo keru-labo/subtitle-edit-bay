@@ -71,9 +71,9 @@ class SubtitleSegment:
             manual_line_count=bool(normalized["manual_line_count"]),
             manual_font_scale=bool(normalized["manual_font_scale"]),
             manual_font_family=bool(normalized["manual_font_family"]),
-            source_speaker=str(normalized.get("source_speaker", "")),
-            source_track=str(normalized.get("source_track", "")),
-            source_file=str(normalized.get("source_file", "")),
+            source_speaker=str(normalized.get("source_speaker") or ""),
+            source_track=str(normalized.get("source_track") or ""),
+            source_file=str(normalized.get("source_file") or ""),
             words=_word_payloads(normalized.get("words", [])),
             extras=deepcopy(
                 {

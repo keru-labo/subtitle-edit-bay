@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from collections.abc import Callable, Iterable, Mapping
 from typing import TypedDict
 
-from .data_boundary import coerce_float, is_object_dict, is_object_iterable, is_object_sequence
+from .data_boundary import coerce_float, is_object_dict, is_object_iterable, is_object_mapping, is_object_sequence
 from .subtitle_project import SubtitleProjectError, validate_project
 
 
@@ -100,6 +100,13 @@ def find_matching_segment_ids(
     return result
 
 
+def _project_speakers(project: Mapping[object, object]) -> list[Mapping[object, object]]:
+    value = project.get("speakers", [])
+    if not is_object_sequence(value) or isinstance(value, (str, bytes)):
+        return []
+    return [item for item in value if is_object_mapping(item)]
+
+
 def preview_bulk_edit(
     project: Mapping[object, object],
     query: BulkEditQuery,
@@ -111,11 +118,12 @@ def preview_bulk_edit(
     excluded = {str(item) for item in excluded_segment_ids}
     changes: list[BulkEditChange] = []
     by_id = {str(item.get("id")): item for item in _project_segments(project)}
+    speakers = _project_speakers(project)
     for segment_id in ids:
         if segment_id in excluded:
             continue
         before = by_id[segment_id]
-        after = _apply_to_segment(before, action, query)
+        after = _apply_to_segment(before, action, query, speakers=speakers)
         if before != after:
             changes.append({"id": segment_id, "before": deepcopy(before), "after": after})
     return BulkEditPreview(tuple(item["id"] for item in changes), tuple(changes))
@@ -165,6 +173,8 @@ def _apply_to_segment(
     segment: Mapping[object, object],
     action: BulkEditAction,
     query: BulkEditQuery,
+    *,
+    speakers: Iterable[Mapping[object, object]] = (),
 ) -> dict[object, object]:
     updated = deepcopy(dict(segment))
     if action.text_replace_from is not None:
@@ -186,9 +196,29 @@ def _apply_to_segment(
             raise BulkEditError(f"無効な置換正規表現です: {error}") from error
         updated["manual_text"] = True
     rename = dict(action.speaker_rename or {})
-    if str(updated.get("speaker", "")) in rename:
-        updated["speaker"] = rename[str(updated.get("speaker", ""))]
+    current_speaker = str(updated.get("speaker", ""))
+    if current_speaker in rename:
+        new_speaker = rename[current_speaker]
+        updated["speaker"] = new_speaker
         updated["manual_speaker"] = True
+        matched = next(
+            (
+                item
+                for item in speakers
+                if str(item.get("style", "")) == new_speaker or str(item.get("name", "")) == new_speaker
+            ),
+            None,
+        )
+        if matched is not None:
+            updated["source_speaker"] = str(matched.get("name", "") or new_speaker)
+            updated["source_file"] = str(matched.get("file_name", "") or "")
+            updated["source_track"] = str(matched.get("track_key", "") or "")
+        else:
+            updated["source_speaker"] = new_speaker
+            if "source_file" in updated:
+                updated["source_file"] = ""
+            if "source_track" in updated:
+                updated["source_track"] = ""
     for key, value in dict(action.style or {}).items():
         if key not in {"subtitle_font_family", "subtitle_font_scale", "position", "emphasis"}:
             raise BulkEditError(f"unsupported style field: {key}")

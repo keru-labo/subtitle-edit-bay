@@ -12,7 +12,7 @@ from .ass_template import (
     build_ass_header,
 )
 from .color_config import load_speaker_color_map, normalize_color_key
-from .data_boundary import decode_json
+from .data_boundary import decode_json, is_object_iterable, is_object_mapping
 from .models import SubtitleEvent as SubtitleEvent
 from .subtitle_line_count import pack_segments_with_line_count
 from .subtitle_layout.packer import (
@@ -122,14 +122,66 @@ def infer_base_style(event: SubtitleEvent) -> str:
     return base_style
 
 
+def _project_track_colors(data: object) -> dict[str, str]:
+    colors: dict[str, str] = {}
+    if is_object_mapping(data):
+        raw_speakers = data.get("speakers")
+        if is_object_iterable(raw_speakers):
+            for item in raw_speakers:
+                if not is_object_mapping(item):
+                    continue
+                track_key = str(item.get("track_key") or "").strip()
+                color = str(item.get("color") or "").strip()
+                if track_key and color:
+                    colors[track_key] = color
+    return colors
+
+
+def _project_speaker_colors(
+    data: object,
+    track_color_map: dict[str, str] | None = None,
+) -> dict[str, str]:
+    colors: dict[str, str] = {}
+    if track_color_map:
+        for track_key, color in track_color_map.items():
+            if track_key.startswith("craig:") and color:
+                speaker_name = track_key.split(":", 1)[1].strip()
+                if speaker_name:
+                    colors[normalize_color_key(speaker_name)] = color
+    if is_object_mapping(data):
+        raw_speakers = data.get("speakers")
+        if is_object_iterable(raw_speakers):
+            for item in raw_speakers:
+                if not is_object_mapping(item):
+                    continue
+                color = str(item.get("color") or "").strip()
+                if not color:
+                    continue
+                for field_name in ("name", "file_name", "style"):
+                    key_value = str(item.get(field_name) or "").strip()
+                    if key_value:
+                        colors[normalize_color_key(key_value)] = color
+    return colors
+
+
 def resolve_event_style_override(
     event: SubtitleEvent,
     speaker_color_map: dict[str, str] | None = None,
     track_color_map: dict[str, str] | None = None,
+    *,
+    prefer_track_color: bool = False,
 ) -> tuple[str, str] | None:
-    source_file = str(event.metadata.get("source_file", "")).strip()
-    source_speaker = str(event.metadata.get("source_speaker", "")).strip()
-    source_track = str(event.metadata.get("source_track", "")).strip()
+    source_file = str(event.metadata.get("source_file") or "").strip()
+    source_speaker = str(event.metadata.get("source_speaker") or "").strip()
+    source_track = str(event.metadata.get("source_track") or "").strip()
+    speaker = str(event.speaker or "").strip()
+    manual_speaker = bool(event.metadata.get("manual_speaker", False))
+    if prefer_track_color and track_color_map and source_track and source_track in track_color_map:
+        return style_name_for_track(source_track), track_color_map[source_track]
+    if manual_speaker and speaker_color_map and speaker:
+        color = speaker_color_map.get(normalize_color_key(speaker))
+        if color:
+            return style_name_for_speaker(speaker), color
     if speaker_color_map and source_file:
         color = speaker_color_map.get(normalize_color_key(source_file))
         if color:
@@ -138,8 +190,16 @@ def resolve_event_style_override(
         color = speaker_color_map.get(normalize_color_key(source_speaker))
         if color:
             return style_name_for_speaker(source_speaker), color
+    if speaker_color_map and not source_speaker and speaker:
+        color = speaker_color_map.get(normalize_color_key(speaker))
+        if color:
+            return style_name_for_speaker(speaker), color
     if track_color_map and source_track and source_track in track_color_map:
         return style_name_for_track(source_track), track_color_map[source_track]
+    if speaker_color_map and speaker:
+        color = speaker_color_map.get(normalize_color_key(speaker))
+        if color:
+            return style_name_for_speaker(speaker), color
     return None
 
 
@@ -147,9 +207,16 @@ def infer_style(
     event: SubtitleEvent,
     speaker_color_map: dict[str, str] | None = None,
     track_color_map: dict[str, str] | None = None,
+    *,
+    prefer_track_color: bool = False,
 ) -> str:
     base_style = infer_base_style(event)
-    override = resolve_event_style_override(event, speaker_color_map=speaker_color_map, track_color_map=track_color_map)
+    override = resolve_event_style_override(
+        event,
+        speaker_color_map=speaker_color_map,
+        track_color_map=track_color_map,
+        prefer_track_color=prefer_track_color,
+    )
     if override is not None:
         chosen, _color = override
         return f"Shout{chosen}" if event.emphasis == "shout" else chosen
@@ -162,10 +229,17 @@ def build_track_style_overrides(
     events: list[SubtitleEvent],
     speaker_color_map: dict[str, str] | None = None,
     track_color_map: dict[str, str] | None = None,
+    *,
+    prefer_track_color: bool = False,
 ) -> dict[str, tuple[str, str]]:
     overrides: dict[str, tuple[str, str]] = {}
     for event in events:
-        override = resolve_event_style_override(event, speaker_color_map=speaker_color_map, track_color_map=track_color_map)
+        override = resolve_event_style_override(
+            event,
+            speaker_color_map=speaker_color_map,
+            track_color_map=track_color_map,
+            prefer_track_color=prefer_track_color,
+        )
         if override is None:
             continue
         base_style = infer_base_style(event)
@@ -232,8 +306,15 @@ def render_dialogue(
     track_color_map: dict[str, str] | None = None,
     subtitle_font_size: int = DEFAULT_SUBTITLE_FONT_SIZE,
     row_margin_step: int = ROW_MARGIN_STEP,
+    *,
+    prefer_track_color: bool = False,
 ) -> str:
-    style = infer_style(event, speaker_color_map=speaker_color_map, track_color_map=track_color_map)
+    style = infer_style(
+        event,
+        speaker_color_map=speaker_color_map,
+        track_color_map=track_color_map,
+        prefer_track_color=prefer_track_color,
+    )
     font_scale = max(0.1, float(event.metadata.get("subtitle_font_scale", 1.0)))
     scaled_font_size = max(3, round(subtitle_font_size * font_scale))
     font_family = sanitize_ass_font_family(event.metadata.get("subtitle_font_family", ""))
@@ -278,11 +359,18 @@ def render_ass(
         events=events,
         height=height,
     )
-    resolved_speaker_color_map = load_speaker_color_map() if speaker_color_map is None else speaker_color_map
+    resolved_track_color_map = _project_track_colors(data) if track_color_map is None else track_color_map
+    prefer_track_color = speaker_color_map is None
+    if speaker_color_map is None:
+        resolved_speaker_color_map = load_speaker_color_map()
+        resolved_speaker_color_map.update(_project_speaker_colors(data, resolved_track_color_map))
+    else:
+        resolved_speaker_color_map = speaker_color_map
     style_overrides = build_track_style_overrides(
         events,
         speaker_color_map=resolved_speaker_color_map,
-        track_color_map=track_color_map,
+        track_color_map=resolved_track_color_map,
+        prefer_track_color=prefer_track_color,
     )
     lines = [build_ass_header(
         width=width,
@@ -296,9 +384,10 @@ def render_ass(
         render_dialogue(
             event,
             speaker_color_map=resolved_speaker_color_map,
-            track_color_map=track_color_map,
+            track_color_map=resolved_track_color_map,
             subtitle_font_size=subtitle_font_size,
             row_margin_step=row_margin_step,
+            prefer_track_color=prefer_track_color,
         )
         for event in events
     )
