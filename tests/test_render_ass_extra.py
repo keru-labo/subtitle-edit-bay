@@ -12,10 +12,12 @@ from src.render_ass import (
     build_track_style_overrides,
     infer_style,
     parse_track_color_args,
+    render_ass,
     resolve_event_style_override,
     style_name_for_speaker,
     style_name_for_track,
 )
+from src.subtitle_workflow import build_project_ass
 from tests.typed_case import TypedTestCase
 
 
@@ -72,6 +74,79 @@ class RenderAssExtraTests(TypedTestCase):
     def test_style_name_for_track(self) -> None:
         self.assertEqual(style_name_for_track("Track 1"), "Track_Track_1")
         self.assertEqual(style_name_for_track(""), "Track_track")
+
+    def test_style_name_for_track_keeps_non_ascii_craig_tracks_distinct(self) -> None:
+        taro_style = style_name_for_track("craig:たろう")
+        hanako_style = style_name_for_track("craig:はなこ")
+        self.assertNotEqual(taro_style, hanako_style)
+        self.assertTrue(taro_style.startswith("Track_craig_たろう_"))
+        self.assertTrue(hanako_style.startswith("Track_craig_はなこ_"))
+
+        data: dict[str, object] = {
+            "segments": [
+                {
+                    "start": 0.0,
+                    "end": 1.5,
+                    "text": "こんにちは",
+                    "speaker": "Oz",
+                    "source_speaker": "たろう",
+                    "source_track": "craig:たろう",
+                },
+                {
+                    "start": 2.0,
+                    "end": 3.5,
+                    "text": "よろしく",
+                    "speaker": "A",
+                    "source_speaker": "はなこ",
+                    "source_track": "craig:はなこ",
+                },
+            ]
+        }
+        ass = render_ass(
+            data,
+            speaker_color_map={},
+            track_color_map={"craig:たろう": "#FF0000", "craig:はなこ": "#0000FF"},
+        )
+        self.assertIn(f"Style: {taro_style},", ass)
+        self.assertIn(f"Style: {hanako_style},", ass)
+        self.assertIn("&H000000FF", ass)
+        self.assertIn("&H00FF0000", ass)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project: dict[object, object] = {
+                "version": 1,
+                "video": {
+                    "path": "dummy.mp4",
+                    "width": 1920,
+                    "height": 1080,
+                    "fps": 30.0,
+                    "duration": 10.0,
+                },
+                "speakers": [
+                    {
+                        "id": "craig:たろう",
+                        "name": "たろう",
+                        "style": "Oz",
+                        "color": "#FF0000",
+                        "track_key": "craig:たろう",
+                    },
+                    {
+                        "id": "craig:はなこ",
+                        "name": "はなこ",
+                        "style": "A",
+                        "color": "#0000FF",
+                        "track_key": "craig:はなこ",
+                    },
+                ],
+                "segments": data["segments"],
+                "settings": {},
+            }
+            project_path = Path(tmp) / "subtitle_project.json"
+            ass_path = Path(tmp) / "out.ass"
+            build_project_ass(project_path, output_path=ass_path, _project=project)
+            project_ass = ass_path.read_text(encoding="utf-8")
+            self.assertIn("&H000000FF", project_ass)
+            self.assertIn("&H00FF0000", project_ass)
 
     def test_style_name_for_speaker_escapes_and_hashes(self) -> None:
         self.assertTrue(style_name_for_speaker("A/B C").startswith("Speaker_A_B_C"))

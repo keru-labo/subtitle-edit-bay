@@ -75,8 +75,27 @@ def parse_track_color_args(values: list[str] | None) -> dict[str, str]:
     return mapping
 
 
+def _style_token_for_track(value: str) -> str:
+    raw = str(value).strip()
+    if not raw:
+        return "track"
+    token = _STYLE_TOKEN_RE.sub("_", raw).strip("_")
+    if not token:
+        token = "track"
+    if raw.startswith("craig:"):
+        speaker_raw = raw.split(":", 1)[1].strip()
+        if _STYLE_TOKEN_SAFE_RE.fullmatch(speaker_raw):
+            return f"craig_{speaker_raw}"
+        digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:10]
+        return f"{token[:48]}_{digest}"
+    if _STYLE_TOKEN_SAFE_RE.fullmatch(token) and raw.isascii():
+        return token
+    digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:10]
+    return f"{token[:48]}_{digest}"
+
+
 def style_name_for_track(track: str) -> str:
-    normalized = re.sub(r"[^0-9A-Za-z]+", "_", track).strip("_") or "track"
+    normalized = _style_token_for_track(track)
     return f"Track_{normalized}"
 
 
