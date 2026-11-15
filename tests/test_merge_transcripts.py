@@ -70,11 +70,11 @@ class MergeTranscriptsTests(TypedTestCase):
 
     def test_build_discord_speaker_map_assigns_abc_then_unknown(self) -> None:
         segments = [
-            {"speaker": "alice"},
-            {"speaker": "bob"},
-            {"speaker": "alice"},
-            {"speaker": "carol"},
-            {"speaker": "dave"},
+            {"speaker": "alice", "text": "発話"},
+            {"speaker": "bob", "text": "発話"},
+            {"speaker": "alice", "text": "発話"},
+            {"speaker": "carol", "text": "発話"},
+            {"speaker": "dave", "text": "発話"},
         ]
         mapping = build_discord_speaker_map(segments)
         self.assertEqual(
@@ -114,6 +114,23 @@ class MergeTranscriptsTests(TypedTestCase):
                 [item["speaker"] for item in merged["segments"]],
                 ["Guest", "A", "B", "C"],
             )
+
+    def test_build_discord_speaker_map_ignores_segment_without_text_key(self) -> None:
+        segments = [
+            {"start": 0.0, "end": 0.5, "speaker": "SPEAKER_99"},
+            {"start": 1.0, "end": 2.0, "text": "一人目の発話です", "speaker": "SPEAKER_01"},
+            {"start": 2.5, "end": 3.5, "text": "二人目の発話です", "speaker": "SPEAKER_02"},
+            {"start": 4.0, "end": 5.0, "text": "三人目の発話です", "speaker": "SPEAKER_03"},
+        ]
+        mapping = build_discord_speaker_map(segments)
+        self.assertEqual(
+            mapping,
+            {
+                "SPEAKER_01": "A",
+                "SPEAKER_02": "B",
+                "SPEAKER_03": "C",
+            },
+        )
 
     def test_speaker_for_track(self) -> None:
         self.assertEqual(speaker_for_track("0:a:1"), "Oz")

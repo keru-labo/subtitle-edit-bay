@@ -130,12 +130,11 @@ def build_discord_speaker_map(segments: Sequence[object]) -> dict[object, str]:
     for segment in segments:
         if not is_object_mapping(segment):
             raise ValueError("transcript segment must be an object")
-        if "text" in segment:
-            raw_text = segment.get("text", "")
-            if not isinstance(raw_text, str):
-                raise ValueError("transcript segment text must be a string")
-            if not raw_text.strip():
-                continue
+        raw_text = segment.get("text", "")
+        if not isinstance(raw_text, str):
+            raise ValueError("transcript segment text must be a string")
+        if not raw_text.strip():
+            continue
         diarized_speaker = segment.get("speaker")
         if (
             diarized_speaker is None
