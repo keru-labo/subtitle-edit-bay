@@ -18,13 +18,25 @@
 
 ## ドキュメント
 
+`docs/` 配下の全 56 ドキュメントの分類・概要・状態一覧は **[全ドキュメント索引（`docs/README.md`）](docs/README.md)** を参照してください。
+
+### 利用者向け主要ガイド
+
 - [利用ガイド](docs/USAGE.md): セットアップ、入力配置、実行、再実行、出力確認
 - [通常動画の非破壊カット](docs/NON_DESTRUCTIVE_CUTS.md): 操作、保存形式、時間対応、書き出し規則
 - [処理進捗ガイド](docs/PROCESS_PROGRESS.md): 工程シーケンス、全体進捗、停止・エラー表示
 - [ショートモード利用ガイド](docs/USAGE.md#ショートモード): クリップ、fit、BGM、クロスフェード、書き出し
+- [字幕の自動改行・手動改行](docs/SUBTITLE_LINE_COUNT.md): 自動改行、Enterによる手動改行、ページ分割規則
 - [設定ガイド](docs/CONFIGURATION.md): GPU、字幕タイミング、色、話者分離、codec
 - [Codexチャット](docs/CODEX_CHAT.md): ログイン、チャット、字幕編集提案、モデル選択、再接続
 - [トラブルシューティング](docs/TROUBLESHOOTING.md): よくあるエラーと切り分け
+
+### 開発者向け主要入口
+
+- [GUIアーキテクチャ](docs/GUI_ARCHITECTURE.md): Python GUI state分割、QMLコンポーネント境界、編集確定境界
+- [GUI機能別Facade境界](docs/GUI_FEATURES.md): QMLへ公開する8つの機能別Facadeの責務と互換層
+- [品質チェック・テスト契約](docs/QUALITY.md): Ruff、mypy（`Any` 禁止）、GUIテストハーネス、E2E契約
+- [CIテストグループ](docs/CI_TEST_GROUPS.md): CIテスト分類、所有権、変更範囲別ジョブ選択
 - [リリースガイド](docs/RELEASING.md): バージョンタグ、GitHub Releases、公開後確認
 
 ## ZIP版セットアップ（開発・代替経路）
