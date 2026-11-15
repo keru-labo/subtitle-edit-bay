@@ -536,11 +536,15 @@ def build_speaker_style_map(audio_files: list[Path]) -> dict[str, str]:
     ordered_files = sorted(audio_files, key=_audio_file_sort_key)
     speaker_names = [parse_craig_speaker_name(str(path)) for path in ordered_files]
     style_map: dict[str, str] = {}
-    for index, speaker_name in enumerate(speaker_names):
-        if index < len(DEFAULT_STYLE_SEQUENCE):
-            style_map[speaker_name] = DEFAULT_STYLE_SEQUENCE[index]
+    palette = DEFAULT_STYLE_SEQUENCE[1:] or DEFAULT_STYLE_SEQUENCE
+    for speaker_name in speaker_names:
+        if speaker_name in style_map:
+            continue
+        unique_index = len(style_map)
+        if unique_index < len(DEFAULT_STYLE_SEQUENCE):
+            style_map[speaker_name] = DEFAULT_STYLE_SEQUENCE[unique_index]
         else:
-            style_map[speaker_name] = "UNKNOWN"
+            style_map[speaker_name] = palette[(unique_index - 1) % len(palette)]
     return style_map
 
 
