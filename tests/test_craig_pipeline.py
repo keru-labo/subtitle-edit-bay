@@ -384,7 +384,7 @@ class CraigPipelineTests(TypedTestCase):
         six_map = build_speaker_style_map([Path(f"{i}-player{i}.aac") for i in range(1, 7)])
         for speaker_name, style_name in six_map.items():
             self.assertNotEqual(style_name, "UNKNOWN", speaker_name)
-            self.assertIn(style_name, {"Oz", "A", "B", "C"})
+            self.assertIn(style_name, ("Oz", "A", "B", "C"))
         self.assertEqual(six_map["player1"], "Oz")
         self.assertEqual(six_map["player5"], "A")
         self.assertEqual(six_map["player6"], "B")
