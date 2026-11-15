@@ -1,5 +1,9 @@
 # Transcription hint workflow boundary
 
+> [!NOTE]
+> **履歴資料（Archive）**: この文書は Issue #1 のワークフロー接続ステップ時点の作業記録です。
+> 現在の正本仕様は [TRANSCRIPTION_DICTIONARY.md](../TRANSCRIPTION_DICTIONARY.md) を参照してください。
+
 `src/transcription_hint_workflow.py` bridges saved project/workflow context to the lower-level Craig transcription hint plan.
 
 It intentionally does not run WhisperX and does not read or write transcript JSON. Its responsibilities are limited to:

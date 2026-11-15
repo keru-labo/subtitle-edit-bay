@@ -1,5 +1,9 @@
 # Transcription hint plan
 
+> [!NOTE]
+> **履歴資料（Archive）**: この文書は Issue #1 のヒント計画ステップ時点の作業記録です。
+> 現在の正本仕様は [TRANSCRIPTION_DICTIONARY.md](../TRANSCRIPTION_DICTIONARY.md) および [TRANSCRIPTION_EXECUTION.md](../TRANSCRIPTION_EXECUTION.md) を参照してください。
+
 This document describes the bridge between saved transcription context,
 manual dictionaries, ASR settings, Craig execution hints, and transcript cache
 fingerprints.

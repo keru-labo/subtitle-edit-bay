@@ -1,5 +1,9 @@
 # Transcription context rollout
 
+> [!NOTE]
+> **履歴資料（Archive）**: この文書は Issue #1 Step 1 時点の段階ロールアウト計画メモです。
+> 現在の正本仕様は [TRANSCRIPTION_DICTIONARY.md](../TRANSCRIPTION_DICTIONARY.md) を参照してください。
+
 Issue #1 adds game-specific transcription hints without requiring a local LLM. The implementation is intentionally staged so the GUI, dictionary, ASR hinting, and transcript cache behavior do not become coupled in one large change.
 
 ## Current boundary

@@ -1,5 +1,9 @@
 # Codex字幕編集Epicの実装計画
 
+> [!NOTE]
+> **履歴資料（Archive）**: この文書は Issue #168 Epic（子 Issue #169〜#173）時点の実装計画・作業記録です。
+> 現在の正本仕様は [CODEX_CHAT.md](../CODEX_CHAT.md) および [CODEX_ACTIONS.md](../CODEX_ACTIONS.md) を参照してください。
+
 Issue #168のEpicは、Codexへ字幕を無条件に編集させる機能ではなく、`提案 → 差分確認 → 明示適用` を一貫した境界として実装する。
 
 ## 実装順
