@@ -198,5 +198,5 @@ Ruff / mypy（`Any` 禁止）品質ゲート、CI テストグループ分類、
 ```markdown
 > [!NOTE]
 > **履歴資料（Archive）**: この文書は Issue #XXX / PR #YYY 時点の計画・作業記録です。
-> 現在の正本仕様は `docs/` 直下の正本文書（例: [SHORT_WORKSPACE.md](SHORT_WORKSPACE.md)）を参照してください。
+> 現在の正本仕様は `docs/` 直下の正本文書（例: [SHORT_WORKSPACE.md](../SHORT_WORKSPACE.md)）を参照してください。
 ```
