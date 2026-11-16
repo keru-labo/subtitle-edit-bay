@@ -59,6 +59,24 @@ class GuiSourceStateTests(TypedTestCase):
         self.assertEqual([entry["color"] for entry in entries], ["#112233", "#445566"])
         self.assertEqual([entry["track_key"] for entry in entries], ["craig:alice", "craig:bob"])
 
+    def test_build_speaker_entries_from_files_shares_color_for_duplicate_speaker(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            first = root / "1-alice.flac"
+            second = root / "2-alice.flac"
+            third = root / "3-bob.flac"
+            for path in (first, second, third):
+                path.write_bytes(b"")
+
+            entries = build_speaker_entries_from_files([third, first, second])
+
+        self.assertEqual([entry["name"] for entry in entries], ["alice", "alice", "bob"])
+        self.assertEqual(
+            [entry["file_name"] for entry in entries],
+            ["1-alice.flac", "2-alice.flac", "3-bob.flac"],
+        )
+        self.assertEqual([entry["color"] for entry in entries], ["#FFD966", "#FFD966", "#F6B26B"])
+
 
 if __name__ == "__main__":
     unittest.main()

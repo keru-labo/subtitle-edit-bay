@@ -130,8 +130,17 @@ def build_discord_speaker_map(segments: Sequence[object]) -> dict[object, str]:
     for segment in segments:
         if not is_object_mapping(segment):
             raise ValueError("transcript segment must be an object")
+        raw_text = segment.get("text", "")
+        if not isinstance(raw_text, str):
+            raise ValueError("transcript segment text must be a string")
+        if not raw_text.strip():
+            continue
         diarized_speaker = segment.get("speaker")
-        if diarized_speaker is None or diarized_speaker in mapping:
+        if (
+            diarized_speaker is None
+            or (isinstance(diarized_speaker, str) and not diarized_speaker.strip())
+            or diarized_speaker in mapping
+        ):
             continue
         if len(mapping) < len(DISCORD_COLORS):
             mapping[diarized_speaker] = DISCORD_COLORS[len(mapping)]
@@ -327,7 +336,12 @@ def merge_transcripts(
             segments.append(item)
         dynamic_map = (
             build_discord_speaker_map(segments)
-            if audio_track == DISCORD_TRACK and any(segment.get("speaker") for segment in segments)
+            if audio_track == DISCORD_TRACK
+            and any(
+                segment.get("speaker")
+                and (not isinstance(segment.get("text", ""), str) or str(segment.get("text", "")).strip())
+                for segment in segments
+            )
             else None
         )
         for segment in segments:
@@ -339,6 +353,7 @@ def merge_transcripts(
                 continue
 
             diarized_speaker = segment.get("speaker")
+            normalized_source_speaker = str(diarized_speaker).strip() if diarized_speaker is not None else ""
             speaker = speaker_for_track(audio_track, diarized_speaker, dynamic_map)
             merged_segment: Segment = {
                 "start": coerce_float(segment["start"]),
@@ -350,7 +365,7 @@ def merge_transcripts(
                 "layout_row": 0,
                 "max_width": max_width_for_speaker(speaker),
                 "source_track": audio_track,
-                "source_speaker": diarized_speaker,
+                "source_speaker": normalized_source_speaker,
                 "words": segment.get("words", []),
             }
             merged_segments.append(merged_segment)

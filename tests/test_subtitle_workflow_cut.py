@@ -4,9 +4,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src.data_boundary import is_string_object_dict_list
+from typing_extensions import Unpack
+
+from src.data_boundary import is_string_object_dict, is_string_object_dict_list
+from src.pipeline import build_ass_from_data as real_build_ass_from_data
 from src.subtitle_project import create_project, load_project, save_project
-from src.subtitle_workflow import build_project_ass, render_project_video
+from src.subtitle_workflow import AssBuildOptions, build_project_ass, render_project_video
 from tests.typed_case import TypedTestCase
 from tests.typed_data import mock_args, mock_kwargs, section
 
@@ -50,6 +53,85 @@ class SubtitleWorkflowCutTests(TypedTestCase):
                 [(item["start"], item["end"]) for item in segments],
                 [(0.5, 1.0), (1.2, 2.0)],
             )
+
+    def test_silence_cut_keeps_project_speaker_color(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            video = root / "game.mkv"
+            audio = root / "1-alice.flac"
+            video.write_bytes(b"video")
+            audio.write_bytes(b"audio")
+            speaker = {
+                "name": "Alice",
+                "style": "Alice",
+                "track_key": "",
+                "color": "#00FF00",
+                "file_name": audio.name,
+                "path": str(audio),
+            }
+            project = create_project(
+                video_path=video,
+                output_dir=root,
+                duration_seconds=4,
+                audio_sources=[speaker],
+                speakers=[speaker],
+                segments=[{
+                    "start": 0.25,
+                    "end": 0.75,
+                    "text": "edited",
+                    "speaker": "Alice",
+                    "source_speaker": "",
+                    "source_track": "",
+                }],
+                audio_mix={
+                    "customized": True,
+                    "channels": [{
+                        "id": "external:craig:alice",
+                        "kind": "external",
+                        "path": str(audio),
+                        "label": "alice",
+                        "enabled": True,
+                        "muted": False,
+                        "solo": False,
+                        "volume_percent": 100,
+                    }],
+                },
+            )
+            project_path = root / "game.subtitle-project.json"
+            save_project(project_path, project)
+            normal_ass = root / "game.edited.ass"
+            normal_ass.write_text("ASS", encoding="utf-8")
+            captured: dict[str, object] = {}
+
+            def spy_build_ass(transcript: object, output: str | Path, **kwargs: Unpack[AssBuildOptions]) -> Path:
+                result = real_build_ass_from_data(transcript, str(output), **kwargs)
+                captured["transcript"] = transcript
+                captured["ass"] = Path(output).read_text(encoding="utf-8")
+                return result
+
+            with (
+                patch("src.subtitle_workflow.build_project_ass", return_value=normal_ass),
+                patch("src.subtitle_workflow.probe_audio_streams", return_value=list[dict[str, object]]([{"codec_name": "aac"}])),
+                patch("src.subtitle_workflow.detect_speech_ranges", return_value=list[tuple[float, float]]([(0.0, 1.0)])),
+                patch("src.subtitle_workflow.build_no_speech_plan", return_value=([(1.0, 4.0)], [(0.0, 1.0)])),
+                patch("src.subtitle_workflow.build_ass_from_data", side_effect=spy_build_ass),
+                patch("src.subtitle_workflow.cut_media_ranges"),
+                patch("src.subtitle_workflow.run_ffmpeg_burn"),
+            ):
+                render_project_video(project_path, cut_no_speech=True, audio_normalize=False)
+
+            cut_transcript = captured["transcript"]
+            if not is_string_object_dict(cut_transcript):
+                raise AssertionError("cut transcript must be an object")
+            self.assertEqual(cut_transcript.get("speakers"), [speaker])
+            cut_ass = str(captured["ass"])
+            self.assertIn("Style: Speaker_Alice,Arial,50,&H0000FF00", cut_ass)
+            self.assertIn(",Speaker_Alice,", cut_ass)
+
+            preview_ass_path = root / "game.preview.ass"
+            build_project_ass(project_path, output_path=preview_ass_path)
+            preview_ass = preview_ass_path.read_text(encoding="utf-8")
+            self.assertIn("Style: Speaker_Alice,Arial,50,&H0000FF00", preview_ass)
 
     def test_manual_cut_render_uses_kept_ranges_and_retimed_subtitles(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
