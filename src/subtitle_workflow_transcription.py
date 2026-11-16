@@ -94,9 +94,13 @@ def _project_speakers(
     track_color_map: dict[str, str],
 ) -> list[_WorkflowSpeaker]:
     speakers: list[_WorkflowSpeaker] = []
-    for index, audio_file in enumerate(audio_files):
+    color_index_by_name: dict[str, int] = {}
+    for audio_file in audio_files:
         name = parse_craig_speaker_name(str(audio_file))
         track_key = f"craig:{name}"
+        if name not in color_index_by_name:
+            color_index_by_name[name] = len(color_index_by_name)
+        color_index = color_index_by_name[name]
         speakers.append(
             {
                 "name": name,
@@ -105,7 +109,7 @@ def _project_speakers(
                 "file_name": audio_file.name,
                 "path": str(audio_file.resolve()),
                 "color": track_color_map.get(
-                    track_key, DEFAULT_SPEAKER_COLORS[index % len(DEFAULT_SPEAKER_COLORS)]
+                    track_key, DEFAULT_SPEAKER_COLORS[color_index % len(DEFAULT_SPEAKER_COLORS)]
                 ).upper(),
             }
         )

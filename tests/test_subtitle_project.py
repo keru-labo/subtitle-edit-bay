@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-from src.craig_pipeline import CraigTranscriptionBatch
+from src.craig_pipeline import CraigTranscriptionBatch, build_speaker_style_map
 from src.data_boundary import coerce_float, is_string_object_dict, is_string_object_dict_list
 from src.gui_state import build_gui_render_command, build_gui_transcribe_command
 from src.subtitle_project import (
@@ -30,6 +30,9 @@ from src.subtitle_workflow import (
     SubtitleAlignmentResult,
     SubtitlePipelineInputs,
     SubtitleRefineResult,
+    _ass_build_options,
+    _build_waveforms,
+    _project_speakers,
     build_project_stage,
     resolve_subtitle_inputs,
     run_subtitle_alignment_stage,
@@ -37,6 +40,9 @@ from src.subtitle_workflow import (
     build_project_ass,
     render_project_video,
     transcribe_to_project,
+)
+from src.subtitle_workflow_transcription import (
+    _project_speakers as _project_speakers_with_context,
 )
 from tests.typed_case import TypedTestCase
 
@@ -759,6 +765,52 @@ class SubtitleWorkflowTests(TypedTestCase):
         self.assertFalse(model.short_video.enabled)
         self.assertEqual(model.short_video.output.height, 1920)
         self.assertEqual(_project_section(model.to_json(), "short_video")["enabled"], False)
+
+
+class ProjectSpeakersTests(TypedTestCase):
+    def test_duplicate_speaker_files_share_one_color_slot(self) -> None:
+        files = [Path(f"/tmp/{name}") for name in ("1-alice.aac", "2-alice.aac", "3-bob.aac")]
+        style_map = build_speaker_style_map(files)
+        for project_speakers in (_project_speakers, _project_speakers_with_context):
+            speakers = project_speakers(files, style_map, {})
+            self.assertEqual([item["name"] for item in speakers], ["alice", "alice", "bob"])
+            self.assertEqual([item["style"] for item in speakers], ["Oz", "Oz", "A"])
+            self.assertEqual(
+                [item["color"] for item in speakers],
+                ["#FFD966", "#FFD966", "#F6B26B"],
+            )
+            self.assertEqual(
+                [item["file_name"] for item in speakers],
+                ["1-alice.aac", "2-alice.aac", "3-bob.aac"],
+            )
+
+    def test_explicit_track_color_map_still_wins_for_duplicate_speaker(self) -> None:
+        files = [Path(f"/tmp/{name}") for name in ("1-alice.aac", "2-alice.aac", "3-bob.aac")]
+        style_map = build_speaker_style_map(files)
+        speakers = _project_speakers(files, style_map, {"craig:alice": "#123456"})
+        self.assertEqual(
+            [item["color"] for item in speakers],
+            ["#123456", "#123456", "#F6B26B"],
+        )
+
+    def test_duplicate_speaker_files_share_project_and_waveform_colors(self) -> None:
+        files = [Path(f"/tmp/{name}") for name in ("1-alice.aac", "2-alice.aac", "3-bob.aac")]
+        style_map = build_speaker_style_map(files)
+        speakers = _project_speakers(files, style_map, {})
+        project: dict[object, object] = {"speakers": speakers, "subtitle_settings": {}}
+        options = _ass_build_options(project)
+        self.assertEqual(
+            options["track_color_map"],
+            {"craig:alice": "#FFD966", "craig:bob": "#F6B26B"},
+        )
+        samples = np.zeros(16, dtype=np.float32)
+        with patch("src.subtitle_workflow.decode_audio_samples", return_value=samples):
+            waveforms = _build_waveforms(files, speakers, 0.0)
+        self.assertEqual([item["speaker"] for item in waveforms], ["alice", "alice", "bob"])
+        self.assertEqual(
+            [item["color"] for item in waveforms],
+            ["#FFD966", "#FFD966", "#F6B26B"],
+        )
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import unittest
 from collections.abc import Mapping
 
 from src.data_boundary import is_object_list, is_object_mapping
+from src.render_ass import render_ass
 from src.subtitle_bulk_edit import (
     BulkEditAction,
     BulkEditError,
@@ -98,6 +99,46 @@ class SubtitleBulkEditTests(TypedTestCase):
                 BulkEditAction(text_replace_from="Alpha", text_replace_to="X"),
                 cancel_check=lambda: True,
             )
+
+    def test_speaker_rename_updates_source_speaker_and_rendered_ass_color(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project = create_project(
+                video_path="C:/input.mp4",
+                output_dir=temp_dir,
+                segments=[
+                    {
+                        "id": "s1",
+                        "start": 0.0,
+                        "end": 2.0,
+                        "text": "話者をBobに変更した字幕",
+                        "speaker": "Alice",
+                        "source_speaker": "Alice",
+                        "source_file": "1-alice.aac",
+                        "source_track": "craig:alice",
+                    }
+                ],
+                duration_seconds=3.0,
+            )
+        result = apply_bulk_edit(
+            project,
+            BulkEditQuery(speaker="Alice"),
+            BulkEditAction(speaker_rename={"Alice": "Bob"}),
+        )
+        updated = self._segment(result.project, 0)
+        self.assertEqual(updated["speaker"], "Bob")
+        self.assertEqual(updated["source_speaker"], "Bob")
+        self.assertEqual(updated["source_file"], "")
+        self.assertEqual(updated["source_track"], "")
+        self.assertTrue(updated["manual_speaker"])
+
+        ass = render_ass(
+            result.project,
+            speaker_color_map={"alice": "#FF0000", "bob": "#0000FF"},
+        )
+        self.assertIn("Style: Speaker_Bob,", ass)
+        self.assertIn("&H00FF0000", ass)
+        self.assertIn(",Speaker_Bob,Bob,0,0,", ass)
+        self.assertNotIn("Speaker_Alice", ass)
 
 
 if __name__ == "__main__":

@@ -545,12 +545,23 @@ class SubtitleFacade(FeatureFacade):
             updated["speaker"] = style
             updated["manual_speaker"] = True
             speaker = next(
-                (item for item in self._project_entries("speakers") if item.get("style") == style), None
+                (
+                    item
+                    for item in self._project_entries("speakers")
+                    if item.get("style") == style or item.get("name") == style
+                ),
+                None,
             )
             if speaker:
                 updated["source_speaker"] = speaker.get("name", "")
                 updated["source_file"] = speaker.get("file_name", "")
                 updated["source_track"] = speaker.get("track_key", "")
+            else:
+                updated["source_speaker"] = style
+                if "source_file" in updated:
+                    updated["source_file"] = ""
+                if "source_track" in updated:
+                    updated["source_track"] = ""
         if "subtitle_font_scale" in changes:
             font_scale = self._edit_number(changes["subtitle_font_scale"], "文字サイズ倍率")
             if font_scale is None:

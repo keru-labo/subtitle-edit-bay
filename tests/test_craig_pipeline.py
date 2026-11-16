@@ -360,6 +360,35 @@ class CraigPipelineTests(TypedTestCase):
         self.assertEqual(style_map["speaker-c"], "B")
         self.assertEqual(style_map["speaker-d"], "C")
 
+    def test_build_speaker_style_map_deduplicates_speakers_and_assigns_defined_styles_beyond_four(self) -> None:
+        from pathlib import Path
+
+        duplicate_map = build_speaker_style_map([
+            Path("1-alice.aac"),
+            Path("2-alice.aac"),
+            Path("3-bob.aac"),
+            Path("4-carol.aac"),
+            Path("5-dave.aac"),
+            Path("6-alice.aac"),
+        ])
+        self.assertEqual(
+            duplicate_map,
+            {
+                "alice": "Oz",
+                "bob": "A",
+                "carol": "B",
+                "dave": "C",
+            },
+        )
+
+        six_map = build_speaker_style_map([Path(f"{i}-player{i}.aac") for i in range(1, 7)])
+        for speaker_name, style_name in six_map.items():
+            self.assertNotEqual(style_name, "UNKNOWN", speaker_name)
+            self.assertIn(style_name, ("Oz", "A", "B", "C"))
+        self.assertEqual(six_map["player1"], "Oz")
+        self.assertEqual(six_map["player5"], "A")
+        self.assertEqual(six_map["player6"], "B")
+
     def test_build_speaker_style_map_sorts_by_file_name_across_directories(self) -> None:
         from pathlib import Path
 

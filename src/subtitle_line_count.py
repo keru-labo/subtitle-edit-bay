@@ -115,10 +115,11 @@ def pack_event_with_line_count(segment: object, default_max_width: int = 24) -> 
             "display_duration": display_duration,
             "subtitle_line_count": line_count,
             "subtitle_font_scale": coerce_float(segment.get("subtitle_font_scale", 1.0)),
-            "subtitle_font_family": str(segment.get("subtitle_font_family", "")),
-            "source_track": str(segment.get("source_track", "")),
-            "source_speaker": str(segment.get("source_speaker", "")),
-            "source_file": str(segment.get("source_file", "")),
+            "subtitle_font_family": str(segment.get("subtitle_font_family") or ""),
+            "source_track": str(segment.get("source_track") or ""),
+            "source_speaker": str(segment.get("source_speaker") or ""),
+            "source_file": str(segment.get("source_file") or ""),
+            "manual_speaker": bool(segment.get("manual_speaker", False)),
         },
     )
 
