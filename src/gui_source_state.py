@@ -38,13 +38,17 @@ def build_speaker_entries_from_files(
     supported_files.sort(key=sort_key)
 
     entries: list[dict[str, str]] = []
-    for index, audio_file in enumerate(supported_files):
+    color_index_by_name: dict[str, int] = {}
+    for audio_file in supported_files:
         stem_parts = audio_file.stem.split("-", 1)
         speaker_name = stem_parts[1] if len(stem_parts) == 2 else audio_file.stem
+        if speaker_name not in color_index_by_name:
+            color_index_by_name[speaker_name] = len(color_index_by_name)
+        color_index = color_index_by_name[speaker_name]
         color = (
             color_map.get(audio_file.name.casefold())
             or color_map.get(speaker_name.casefold())
-            or DEFAULT_SPEAKER_COLORS[index % len(DEFAULT_SPEAKER_COLORS)]
+            or DEFAULT_SPEAKER_COLORS[color_index % len(DEFAULT_SPEAKER_COLORS)]
         )
         entries.append(
             {

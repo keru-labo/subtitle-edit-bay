@@ -404,9 +404,13 @@ def _project_speakers(
     track_color_map: dict[str, str],
 ) -> list[dict[str, str]]:
     speakers: list[dict[str, str]] = []
-    for index, audio_file in enumerate(audio_files):
+    color_index_by_name: dict[str, int] = {}
+    for audio_file in audio_files:
         name = parse_craig_speaker_name(str(audio_file))
         track_key = f"craig:{name}"
+        if name not in color_index_by_name:
+            color_index_by_name[name] = len(color_index_by_name)
+        color_index = color_index_by_name[name]
         speakers.append(
             {
                 "name": name,
@@ -415,7 +419,7 @@ def _project_speakers(
                 "file_name": audio_file.name,
                 "path": str(audio_file.resolve()),
                 "color": track_color_map.get(
-                    track_key, DEFAULT_SPEAKER_COLORS[index % len(DEFAULT_SPEAKER_COLORS)]
+                    track_key, DEFAULT_SPEAKER_COLORS[color_index % len(DEFAULT_SPEAKER_COLORS)]
                 ).upper(),
             }
         )
@@ -1209,7 +1213,12 @@ def _render_cut_source(
     else:
         cut_ass = Path(project_path).with_name(f".{Path(project_path).stem}.cut.ass")
         transcript = project_to_transcript(project, project_is_validated=True)
-        cut_transcript = {"segments": retime_segments_for_keep_ranges(transcript["segments"], keep_ranges)}
+        cut_transcript: dict[str, object] = {
+            "segments": retime_segments_for_keep_ranges(transcript["segments"], keep_ranges)
+        }
+        raw_speakers = project.get("speakers")
+        if is_object_iterable(raw_speakers):
+            cut_transcript["speakers"] = list(raw_speakers)
         try:
             build_ass_from_data(cut_transcript, str(cut_ass), **_ass_build_options(project))
             _render_cut_with_subtitles(plan, output, cut_output, keep_ranges, cut_ass, message, encoding)
