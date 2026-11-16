@@ -1,12 +1,16 @@
 # Clips Kittyとの実装比較（2026-10-20）
 
+> [!NOTE]
+> **履歴資料（Archive）**: この文書は Issue #440 時点（2026-10-20）の外部 OSS 比較・ライセンス確認記録です。
+> 現在の正本仕様は [NON_DESTRUCTIVE_CUTS.md](../NON_DESTRUCTIVE_CUTS.md) および [video-assembly-design.md](../video-assembly-design.md) を参照してください。
+
 本書はSubtitle Edit BayのUI整備（#440）と、ゲーム実況の長尺字幕編集を目的に、
 [Clips Kitty](https://github.com/ColinGPT9/clips-studio)の公開実装を確認した記録。
 このPRにはClips Kitty由来のコードを一切含めない。
 
 ## ライセンス境界
 
-- Subtitle Edit Bay: [MIT](../LICENSE)
+- Subtitle Edit Bay: [MIT](../../LICENSE)
 - Clips Kitty: [AGPL-3.0](https://github.com/ColinGPT9/clips-studio/blob/main/LICENSE)
 
 AGPLの実装ファイルをそのままMITプロジェクトへコピーしてMITのみで配布してはならない。

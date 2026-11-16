@@ -1,5 +1,9 @@
 # コンテキスト操作バーとCodexサイドバー
 
+> [!NOTE]
+> **履歴資料（Archive）**: この文書は Issue #239 時点のコンテキスト操作バー・サイドバー設計メモです。
+> 現在の正本仕様は [GUI_ARCHITECTURE.md](../GUI_ARCHITECTURE.md) および [workspace-actions.md](../workspace-actions.md) を参照してください。
+
 Issue #239 では、メイン画面の工程操作をワークフローステッパー直下のコンテキスト操作バーへ集約する。
 
 ## 操作の責務

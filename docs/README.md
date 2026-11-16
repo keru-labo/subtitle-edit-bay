@@ -8,10 +8,10 @@
 | カテゴリ | 件数 | 想定読者 | 役割・位置づけ |
 | --- | ---: | --- | --- |
 | [1. 利用ガイド (`User Guide`)](#1-利用ガイド-user-guide) | 8 件 | 利用者（一部開発者） | 導入、画面操作、CLI 実行、設定、トラブル解決の手順書 |
-| [2. 設計・仕様 (`Architecture & Design`)](#2-設計仕様-architecture--design) | 24 件 | 開発者 | GUI 構造、ワークスペース境界、データモデル、AI Action 境界、音声・字幕パイプライン仕様 |
+| [2. 設計・仕様 (`Architecture & Design`)](#2-設計仕様-architecture--design) | 23 件 | 開発者 | GUI 構造、ワークスペース境界、データモデル、AI Action 境界、音声・字幕パイプライン仕様 |
 | [3. 運用・リリース (`Release & Runtime`)](#3-運用リリース-release--runtime) | 5 件 | 開発者 | リリース手順、候補昇格、Windows ランタイム契約、バイナリ署名、インストーラー移行 |
 | [4. 品質・テスト (`Quality & CI`)](#4-品質テスト-quality--ci) | 6 件 | 開発者 | CI テストグループ、PR 検証責務、Ruff/mypy 品質ゲート、GUI 性能、実音声 ASR 評価 |
-| [5. 作業記録・履歴 (`Archive / Historical`)](#5-作業記録履歴-archive--historical) | 13 件 | 開発者（履歴参照） | 完了済み Epic の計画・ロードマップ、段階導入時の中間メモ、監査記録、試行ログ |
+| [5. 作業記録・履歴 (`Archive / Historical`)](#5-作業記録履歴-archive--historical) | 14 件 | 開発者（履歴参照） | 完了済み Epic の計画・ロードマップ、段階導入時の中間メモ、監査記録、試行ログ |
 
 ---
 
@@ -42,7 +42,6 @@ GUI アーキテクチャ、ワークスペース状態、音声・文字起こ�
 | [GUI_FEATURES.md](GUI_FEATURES.md) | 開発者 | QML へ公開する 8 つの機能別 Facade（`subtitles`, `audio`, `ai`, `workflow`, `workspace`, `sequence`, `shortVideo`, `updates`）の責務と互換層 | `src/gui_feature_facade.py`, `src/gui_subtitles_facade.py`, `src/gui_audio_facade.py`, `src/gui_ai_facade.py`, `src/gui_workflow_facade.py`, `src/gui_workspace_facade.py`, `src/gui_sequence_facade.py`, `src/gui_short_video_facade.py`, `src/gui_updates_facade.py`, `src/gui_backend_compatibility.py` | Active |
 | [EDITOR_WORKSPACE.md](EDITOR_WORKSPACE.md) | 開発者 | 通常動画編集ワークスペースにおける `currentEditMode`（`subtitle`/`cut`/`audio`）と `editorPlayhead` の状態契約 | `src/editor_workspace.py`, `src/gui_workspace_controller.py`, `src/gui_workspace_facade.py`, `src/ui/screens/MainWorkflowScreen.qml` | Active |
 | [workspace-actions.md](workspace-actions.md) | 開発者 / 利用者 | プロジェクト開始画面、`actionCapabilities` の有効条件表、プロジェクト保存先・完成動画出力先・作業フォルダの分離仕様 | `src/workflow_actions.py`, `src/gui_workflow_facade.py`, `src/subtitle_workflow.py`, `src/ui/components/ProjectStartScreen.qml`, `src/ui/components/ProjectStartFlow.qml` | Active |
-| [CONTEXT_ACTION_BAR.md](CONTEXT_ACTION_BAR.md) | 開発者 | Issue #239 時点における `ContextActionBar.qml` と `CodexSidebarContainer.qml` の配置・操作責務メモ | `src/ui/components/ContextActionBar.qml`, `src/ui/components/CodexSidebarContainer.qml`, `src/ui/screens/MainWorkflowScreen.qml` | Historical |
 | [SHORT_WORKSPACE.md](SHORT_WORKSPACE.md) | 開発者 | ショート用ワークスペース（`short-artifact`）の状態境界、時刻基準（`time_basis=source`）、完成尺計算、本編選択範囲からの bridge 契約 | `src/short_video_timeline.py`, `src/short_video.py`, `src/short_video_schema.py`, `src/gui_workspace_controller.py`, `src/gui_short_video_facade.py`, `src/ui/screens/ShortModeScreen.qml`, `docs/short-workspace-contract.js` | Active |
 | [MULTI_SOURCE_SHORT_VIDEO.md](MULTI_SOURCE_SHORT_VIDEO.md) | 開発者 | 複数素材の `source_id` 管理、再リンク、時刻正規化、ショート動画フィルタ生成の境界仕様 | `src/multi_source_short_video.py`, `src/video_sequence.py` | Active |
 | [video-assembly-design.md](video-assembly-design.md) | 開発者 | 動画連結・シーケンス結合モードの UI レイアウト、データモデル、複数素材×音声の紐づけ、FFmpeg 連携設計 | `src/assemble_video.py`, `src/video_sequence.py`, `src/sequence_render.py`, `src/multi_source_short_video.py`, `src/ui/components/SequenceEditorPanel.qml`, `src/ui/components/MediaBinPanel.qml`, `docs/ui-redesign-mockup.html` | Active |
@@ -102,18 +101,19 @@ Ruff / mypy（`Any` 禁止）品質ゲート、CI テストグループ分類、
 | ドキュメント | 想定読者 | 概要（1行） | 正本コード / 関連領域 | 状態 |
 | --- | --- | --- | --- | --- |
 | [cutover-403-audit.md](cutover-403-audit.md) | 開発者 | **【監査記録】** 親 Issue #403「新UIモックをproduction UIへ移行する」の完了条件を実装・テスト・CI run へ対応付けた最終監査証跡 | `src/ui/`, `src/gui*.py`, `src/video_sequence.py`, `src/sequence_render.py`, `tests/test_cutover_audit.py` | Historical（監査記録） |
-| [QUALITY_SCOPED_FORMAT.md](QUALITY_SCOPED_FORMAT.md) | 開発者 | Ruff format チェックを `scripts/check_quality.py` 単体に限定して段階導入した際のロールアウトノート（正本は `QUALITY.md`） | `scripts/check_quality.py`, `.github/workflows/ci.yml` | Historical |
-| [TRANSCRIPTION_CONTEXT.md](TRANSCRIPTION_CONTEXT.md) | 開発者 | Issue #1 Step 1（`transcription_context` の JSON 形状定義のみ）時点の段階ロールアウト計画（正本は `TRANSCRIPTION_DICTIONARY.md`） | `src/transcription_context.py`, `src/transcription_context_config.py` | Historical |
-| [TRANSCRIPTION_HINTS.md](TRANSCRIPTION_HINTS.md) | 開発者 | Issue #1 の途中段階として `build_transcription_hints()` 単体を追加した際の中間ステップ記録（正本は `TRANSCRIPTION_DICTIONARY.md`） | `src/transcription_hints.py` | Historical |
-| [TRANSCRIPTION_HINT_PLAN.md](TRANSCRIPTION_HINT_PLAN.md) | 開発者 | Issue #1 の途中段階として `transcription_hint_plan.py` を追加した際の中間ステップ記録（正本は `TRANSCRIPTION_DICTIONARY.md`） | `src/transcription_hint_plan.py` | Historical |
-| [TRANSCRIPTION_HINT_WORKFLOW.md](TRANSCRIPTION_HINT_WORKFLOW.md) | 開発者 | Issue #1 の途中段階として `transcription_hint_workflow.py` を追加した際の中間ステップ記録（正本は `TRANSCRIPTION_DICTIONARY.md`） | `src/transcription_hint_workflow.py` | Historical |
-| [CODEX_EDITING_ROADMAP.md](CODEX_EDITING_ROADMAP.md) | 開発者 | 完了済み Epic #168（子 Issue #169〜#173）の実装順序と完了判定チェックリスト（正本は `CODEX_CHAT.md` / `CODEX_ACTIONS.md`） | `src/codex_runtime.py`, `src/codex_edit_proposal.py`, `src/gui_codex_state.py` | Historical |
-| [EDITING_ROADMAP.md](EDITING_ROADMAP.md) | 開発者 | 完了済み Issue #168〜#194 の 4 フェーズ実装順序と当時のリリースゲート計画書 | リポジトリ全体の #168〜#194 各機能 | Historical |
-| [CLIPS_KITTY_COMPARISON.md](CLIPS_KITTY_COMPARISON.md) | 開発者 | Issue #440 に際して外部 OSS（Clips Kitty）との機能比較・非流用方針・ライセンス境界を記録した調査メモ | `src/subtitle_export.py`, `src/video_timeline.py`, `src/subtitle_clip_filter.py` | Historical |
-| [GAMEPLAY_ASR_TRIAL_2026-09-26.md](GAMEPLAY_ASR_TRIAL_2026-09-26.md) | 開発者 | 2026-09-26 に特定の実況動画 1 本で行った ASR パラメータ比較試行の観察結果ログ（正本は `GAMEPLAY_ASR_EVALUATION.md`） | `src/whisperx_runner.py`, `src/transcription_profile.py` | Historical |
-| [short-mode-design.md](short-mode-design.md) | 開発者 | 初期のショート機能追加時の設計資料および FFmpeg フィルタ図解（現在の状態境界の正本は `SHORT_WORKSPACE.md`） | `src/short_video.py`, `src/short_video_schema.py`, `src/short_video_ass.py`, `src/ui/screens/ShortModeScreen.qml` | Historical |
+| [archive/QUALITY_SCOPED_FORMAT.md](archive/QUALITY_SCOPED_FORMAT.md) | 開発者 | Ruff format チェックを `scripts/check_quality.py` 単体に限定して段階導入した際のロールアウトノート（正本は `QUALITY.md`） | `scripts/check_quality.py`, `.github/workflows/ci.yml` | Historical |
+| [archive/TRANSCRIPTION_CONTEXT.md](archive/TRANSCRIPTION_CONTEXT.md) | 開発者 | Issue #1 Step 1（`transcription_context` の JSON 形状定義のみ）時点の段階ロールアウト計画（正本は `TRANSCRIPTION_DICTIONARY.md`） | `src/transcription_context.py`, `src/transcription_context_config.py` | Historical |
+| [archive/TRANSCRIPTION_HINTS.md](archive/TRANSCRIPTION_HINTS.md) | 開発者 | Issue #1 の途中段階として `build_transcription_hints()` 単体を追加した際の中間ステップ記録（正本は `TRANSCRIPTION_DICTIONARY.md`） | `src/transcription_hints.py` | Historical |
+| [archive/TRANSCRIPTION_HINT_PLAN.md](archive/TRANSCRIPTION_HINT_PLAN.md) | 開発者 | Issue #1 の途中段階として `transcription_hint_plan.py` を追加した際の中間ステップ記録（正本は `TRANSCRIPTION_DICTIONARY.md`） | `src/transcription_hint_plan.py` | Historical |
+| [archive/TRANSCRIPTION_HINT_WORKFLOW.md](archive/TRANSCRIPTION_HINT_WORKFLOW.md) | 開発者 | Issue #1 の途中段階として `transcription_hint_workflow.py` を追加した際の中間ステップ記録（正本は `TRANSCRIPTION_DICTIONARY.md`） | `src/transcription_hint_workflow.py` | Historical |
+| [archive/CODEX_EDITING_ROADMAP.md](archive/CODEX_EDITING_ROADMAP.md) | 開発者 | 完了済み Epic #168（子 Issue #169〜#173）の実装順序と完了判定チェックリスト（正本は `CODEX_CHAT.md` / `CODEX_ACTIONS.md`） | `src/codex_runtime.py`, `src/codex_edit_proposal.py`, `src/gui_codex_state.py` | Historical |
+| [archive/EDITING_ROADMAP.md](archive/EDITING_ROADMAP.md) | 開発者 | 完了済み Issue #168〜#194 の 4 フェーズ実装順序と当時のリリースゲート計画書 | リポジトリ全体の #168〜#194 各機能 | Historical |
+| [archive/CLIPS_KITTY_COMPARISON.md](archive/CLIPS_KITTY_COMPARISON.md) | 開発者 | Issue #440 に際して外部 OSS（Clips Kitty）との機能比較・非流用方針・ライセンス境界を記録した調査メモ | `src/subtitle_export.py`, `src/video_timeline.py`, `src/subtitle_clip_filter.py` | Historical |
+| [archive/GAMEPLAY_ASR_TRIAL_2026-09-26.md](archive/GAMEPLAY_ASR_TRIAL_2026-09-26.md) | 開発者 | 2026-09-26 に特定の実況動画 1 本で行った ASR パラメータ比較試行の観察結果ログ（正本は `GAMEPLAY_ASR_EVALUATION.md`） | `src/whisperx_runner.py`, `src/transcription_profile.py` | Historical |
+| [archive/CONTEXT_ACTION_BAR.md](archive/CONTEXT_ACTION_BAR.md) | 開発者 | Issue #239 時点における `ContextActionBar.qml` と `CodexSidebarContainer.qml` の配置・操作責務メモ（正本は `GUI_ARCHITECTURE.md` / `workspace-actions.md`） | `src/ui/components/ContextActionBar.qml`, `src/ui/components/CodexSidebarContainer.qml`, `src/ui/screens/MainWorkflowScreen.qml` | Historical |
+| [archive/short-mode-design.md](archive/short-mode-design.md) | 開発者 | 初期のショート機能追加時の設計資料および FFmpeg フィルタ図解（現在の状態境界の正本は `SHORT_WORKSPACE.md`） | `src/short_video.py`, `src/short_video_schema.py`, `src/short_video_ass.py`, `src/ui/screens/ShortModeScreen.qml` | Historical |
 | [UI_MOCK_ALIGNMENT.md](UI_MOCK_ALIGNMENT.md) | 開発者 | Issue #440 における `ui-redesign-mockup.html` の反映内容、クリップ別字幕絞り込み仕様、残差分と確認手順の記録 | `src/subtitle_clip_filter.py`, `src/gui_subtitles_facade.py`, `src/ui/screens/MainWorkflowScreen.qml`, `src/ui/components/MediaBinPanel.qml`, `src/ui/components/SequenceEditorPanel.qml`, `src/ui/components/WorkspaceInspectorPanel.qml` | Historical |
-| [ui-test-review.md](ui-test-review.md) | 開発者 | GUI テスト見直しの初回調査に PR ごとの修正・テスト追加履歴を時系列で累積した作業日誌（正本は `QUALITY.md`） | `tests/test_gui_editor.py`, `src/ui/`, `src/gui*.py` | Historical |
+| [archive/ui-test-review.md](archive/ui-test-review.md) | 開発者 | GUI テスト見直しの初回調査に PR ごとの修正・テスト追加履歴を時系列で累積した作業日誌（正本は `QUALITY.md`） | `tests/test_gui_editor.py`, `src/ui/`, `src/gui*.py` | Historical |
 
 ---
 

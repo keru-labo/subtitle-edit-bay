@@ -1,5 +1,9 @@
 # Transcription hints
 
+> [!NOTE]
+> **履歴資料（Archive）**: この文書は Issue #1 のヒント生成単体ステップ時点の作業記録です。
+> 現在の正本仕様は [TRANSCRIPTION_DICTIONARY.md](../TRANSCRIPTION_DICTIONARY.md) を参照してください。
+
 This document covers the pure hint-building step for issue #1. The hint builder converts saved transcription context and a normalized manual dictionary into strings that can later be passed to WhisperX.
 
 This step does not invoke WhisperX, does not change transcript cache behavior, and does not add GUI controls.
