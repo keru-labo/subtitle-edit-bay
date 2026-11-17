@@ -1,6 +1,9 @@
 # UI mock 反映状況（Issue #440）
 
-比較元は [UI mock](ui-redesign-mockup.html)。この変更は素材一覧の常設化と、通常動画・ショートの画面配置を対象とする。Issue #440 全体の完了ではない。
+> [!NOTE]
+> **履歴資料（Archive）**: この文書は Issue #440 時点の反映記録です。画面構成と字幕のクリップ絞り込みの現行仕様は [USAGE.md](../USAGE.md) の「画面構成」を参照してください。
+
+比較元は [UI mock](../ui-redesign-mockup.html)。この変更は素材一覧の常設化と、通常動画・ショートの画面配置を対象とする。Issue #440 全体の完了ではない。
 
 ## 今回反映した内容
 
@@ -75,22 +78,22 @@ python -m ruff check src/gui.py tests/test_gui_editor.py tests/test_qml_static.p
 
 ### 1520×940
 
-![通常サイズの素材一覧と下部編集領域](ui-mock-440-normal.png)
+![通常サイズの素材一覧と下部編集領域](../ui-mock-440-normal.png)
 
 ### 1220×760
 
-![最小サイズの素材一覧と下部編集領域](ui-mock-440-compact.png)
+![最小サイズの素材一覧と下部編集領域](../ui-mock-440-compact.png)
 
 ### ショート画面（1220×760）
 
 設定・候補・クリップ追加フォームを複数行に配置し、右端の操作が画面外へ出ないようにする。
 
-![最小サイズのショート画面](ui-mock-440-short.png)
+![最小サイズのショート画面](../ui-mock-440-short.png)
 
 ### 字幕のクリップ絞り込み（1520×940／1220×760）
 
 Linuxの共有環境で、人工動画と3件の字幕を使用。10〜16秒のクリップを選択し、一覧と波形には該当する1件だけを表示する。Windows実機の画面確認は別途必要。
 
-![通常サイズの字幕クリップ絞り込み](ui-subtitle-clip-filter-normal.png)
+![通常サイズの字幕クリップ絞り込み](../ui-subtitle-clip-filter-normal.png)
 
-![最小サイズの字幕クリップ絞り込み](ui-subtitle-clip-filter-compact.png)
+![最小サイズの字幕クリップ絞り込み](../ui-subtitle-clip-filter-compact.png)

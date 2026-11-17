@@ -1,5 +1,10 @@
 # 設定ガイド
 
+> - **種別**: 利用ガイド
+> - **想定読者**: 利用者 / 開発者
+> - **対応機能 / 正本コード**: `assets/runtime_config.json`、`.gui/runtime_config.json`
+> - **最終確認**: 2026-11-17
+
 ## 読み込み規則
 
 CLIの標準設定は `assets/runtime_config.json` です。各コマンドは `shared` を読み、その後に同名セクションを上書きします。
@@ -178,3 +183,9 @@ Copy-Item .\assets\speaker_colors.example.json .\assets\speaker_colors.json
 ~~~
 
 色変更だけなら既存transcript JSONを再利用できます。
+
+## 受け入れ条件・確認方法
+
+- 設定を変更した後、対象のコマンドまたはGUIを再実行し、変更した値が処理結果（デバイス、モデル、字幕サイズ、色など）へ反映されていること。
+- GUI設定は `.gui/runtime_config.json`、CLI標準設定は `assets/runtime_config.json` に保存され、再起動・再実行後も維持されること。
+- 設定エラー時は、どのキーが不正かを表示し、既定値へ黙って置き換えないこと。切り分けは [TROUBLESHOOTING.md](TROUBLESHOOTING.md) を参照する。
