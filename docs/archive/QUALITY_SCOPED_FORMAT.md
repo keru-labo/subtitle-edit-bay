@@ -1,5 +1,9 @@
 # Scoped Ruff format rollout
 
+> [!NOTE]
+> **履歴資料（Archive）**: この文書は Ruff format チェック段階導入時点のロールアウトノートです。
+> 現在の正本仕様は [QUALITY.md](../QUALITY.md) を参照してください。
+
 This note exists to keep the staged format rollout explicit.
 
 The repository is not ready for repository-wide `ruff format --check` enforcement yet, because that would create a large mechanical diff. Instead, the CI quality job starts by checking the shared quality entrypoint itself:
