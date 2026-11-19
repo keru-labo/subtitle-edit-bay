@@ -308,7 +308,11 @@ function Update-ZipDistribution {
             Invoke-WebRequest -UseBasicParsing -Uri $resolvedArchiveUrl -OutFile $zipPath
         }
 
-        Expand-Archive -LiteralPath $zipPath -DestinationPath $extractRoot -Force
+        # The extraction directory is newly created and empty. Use the two-argument
+        # .NET Framework overload so Windows PowerShell does not depend on the
+        # optional overwrite overload exposed differently across runtime versions.
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $extractRoot)
 
         $sourceRoot = Get-ChildItem -LiteralPath $extractRoot -Directory | Select-Object -First 1
         if (-not $sourceRoot -or
