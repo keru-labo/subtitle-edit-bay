@@ -2157,6 +2157,25 @@ Window {
         self.assertEqual(self.app.videoOutputDirectory, str(export))
         self.assertNotEqual(path, target)
 
+    def test_save_as_dialog_cancel_keeps_current_project_and_unsaved_edits(self) -> None:
+        path = self._load_project()
+        original = path.read_bytes()
+        self.app.updateSegment(0, {"text": "edit before canceled Save As"})
+        _, window = self._load_qml()
+        self._click(window, self._quick_item(window, "sourceSetupButton"))
+        project_path_before = str(self.app.projectPath)
+        path_label = self._quick_item(window, "projectSavePathText")
+        path_label_before = _qt_string(path_label, "text")
+        with patch("src.gui.QFileDialog.getSaveFileName", return_value=("", "")) as choose:
+            self._click(window, self._quick_item(window, "projectSaveAsButton"))
+
+        choose.assert_called_once()
+        self.assertEqual(str(self.app.projectPath), project_path_before)
+        self.assertEqual(_qt_string(path_label, "text"), path_label_before)
+        self.assertTrue(self.app.projectDirty)
+        self.assertEqual(_value_at(self._project_data(), "segments", 0, "text"), "edit before canceled Save As")
+        self.assertEqual(path.read_bytes(), original)
+
     def test_save_as_does_not_overwrite_an_unconfirmed_extension_completed_target(self) -> None:
         path = self._load_project()
         self.app.updateSegment(0, {"text": "unsaved"})
