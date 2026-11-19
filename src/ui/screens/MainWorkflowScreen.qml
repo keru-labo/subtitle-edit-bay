@@ -58,6 +58,13 @@ ApplicationWindow {
         : (root.appBackend.workspace.currentEditMode === "audio"
             ? audioWorkspaceSettingsComponent
             : root.cutModeSettingsContent)
+
+    function isMediaBinDropAt(sourceItem, x, y) {
+        return root.activeOverlay === ""
+            && !sourcePopup.visible
+            && workspaceMediaBinPanel.visible
+            && workspaceMediaBinPanel.acceptsExternalDropAt(sourceItem, x, y)
+    }
     readonly property bool editorMode: root.activeOverlay === "editor"
     readonly property bool mixerMode: root.activeOverlay === "mixer"
     readonly property bool dictionaryMode: root.activeOverlay === "dictionary"
@@ -1146,6 +1153,7 @@ ApplicationWindow {
                 spacing: 10
 
                 MediaBinPanel {
+                    id: workspaceMediaBinPanel
                     objectName: "workspaceMediaBin"
                     Layout.preferredWidth: root.width >= 1400 ? 280 : 230
                     Layout.minimumWidth: 210
@@ -1748,10 +1756,26 @@ ApplicationWindow {
         enabled: !root.appBackend.running
         onEntered: function(drag) {
             root.acceptingSourceDrop = drag.hasUrls
+                && !root.isMediaBinDropAt(globalSourceDropArea, drag.x, drag.y)
             drag.accepted = drag.hasUrls
         }
+        onPositionChanged: function(drag) {
+            root.acceptingSourceDrop = drag.hasUrls
+                && !root.isMediaBinDropAt(globalSourceDropArea, drag.x, drag.y)
+        }
         onExited: root.acceptingSourceDrop = false
-        onDropped: function(drop) { root.importSourceDrop(drop) }
+        onDropped: function(drop) {
+            if (drop.hasUrls && root.isMediaBinDropAt(globalSourceDropArea, drop.x, drop.y)) {
+                var localPaths = []
+                for (var index = 0; index < drop.urls.length; ++index)
+                    localPaths.push(String(drop.urls[index]))
+                root.appBackend.sequence.addSequenceAssets(localPaths)
+                root.acceptingSourceDrop = false
+                drop.acceptProposedAction()
+                return
+            }
+            root.importSourceDrop(drop)
+        }
     }
 
     Shortcut { sequences: [StandardKey.Undo]; enabled: root.editorMode; onActivated: root.performSubtitleEdit("undo") }

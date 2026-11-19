@@ -23,6 +23,16 @@ Rectangle {
     border.color: root.borderColor
     signal sourceSettingsRequested()
 
+    // The workflow's full-window DropArea sits above this panel. Let that
+    // fallback route drops to this target when their pointer is inside it.
+    function acceptsExternalDropAt(sourceItem, x, y) {
+        if (!mediaBinDropArea.visible || !mediaBinDropArea.enabled)
+            return false
+        var point = mediaBinDropArea.mapFromItem(sourceItem, x, y)
+        return point.x >= 0 && point.y >= 0
+            && point.x < mediaBinDropArea.width && point.y < mediaBinDropArea.height
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 7
