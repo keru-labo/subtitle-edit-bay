@@ -1,6 +1,6 @@
 # ドキュメント索引（全件カタログ）
 
-本ディレクトリ（`docs/`）配下の全 Markdown ドキュメント（全 **56 件**）を 5 つのカテゴリに分類した全体索引です。
+本ディレクトリ（`docs/`）配下の全 Markdown ドキュメント（全 **57 件**）を 5 つのカテゴリに分類した全体索引です。
 主要な入口はリポジトリトップの [README.md](../README.md) にも掲載しています。
 
 ## カテゴリ一覧
@@ -10,7 +10,7 @@
 | [1. 利用ガイド (`User Guide`)](#1-利用ガイド-user-guide) | 8 件 | 利用者（一部開発者） | 導入、画面操作、CLI 実行、設定、トラブル解決の手順書 |
 | [2. 設計・仕様 (`Architecture & Design`)](#2-設計仕様-architecture--design) | 23 件 | 開発者 | GUI 構造、ワークスペース境界、データモデル、AI Action 境界、音声・字幕パイプライン仕様 |
 | [3. 運用・リリース (`Release & Runtime`)](#3-運用リリース-release--runtime) | 5 件 | 開発者 | リリース手順、候補昇格、Windows ランタイム契約、バイナリ署名、インストーラー移行 |
-| [4. 品質・テスト (`Quality & CI`)](#4-品質テスト-quality--ci) | 6 件 | 開発者 | CI テストグループ、PR 検証責務、Ruff/mypy 品質ゲート、GUI 性能、実音声 ASR 評価 |
+| [4. 品質・テスト (`Quality & CI`)](#4-品質テスト-quality--ci) | 7 件 | 開発者 | CI テストグループ、PR 検証責務、Ruff/mypy 品質ゲート、GUI 性能、実音声 ASR 評価 |
 | [5. 作業記録・履歴 (`Archive / Historical`)](#5-作業記録履歴-archive--historical) | 14 件 | 開発者（履歴参照） | 完了済み Epic の計画・ロードマップ、段階導入時の中間メモ、監査記録、試行ログ |
 
 ---
@@ -85,6 +85,7 @@ Ruff / mypy（`Any` 禁止）品質ゲート、CI テストグループ分類、
 | ドキュメント | 想定読者 | 概要（1行） | 正本コード / 関連領域 | 状態 |
 | --- | --- | --- | --- | --- |
 | [QUALITY.md](QUALITY.md) | 開発者 | `check_quality.py`、Ruff、mypy（`Any` 禁止）、GUI テストハーネス、QML テスト契約、ランチャー／E2E 検証の総合品質基準 | `scripts/check_quality.py`, `scripts/check_no_any.py`, `scripts/check_unittest_discovery.py`, `pyproject.toml`, `tests/gui_test_harness.py`, `tests/media_test_helpers.py` | Active |
+| [GUI_OPERATION_COVERAGE.md](GUI_OPERATION_COVERAGE.md) | 開発者 | ユーザー操作と既存自動テストの照合結果、入力・結果・異常系の区別 | `src/ui/`, `tests/test_gui_editor.py`, `tests/gui_test_harness.py` | Snapshot |
 | [CI_TEST_GROUPS.md](CI_TEST_GROUPS.md) | 開発者 | `ci_test_groups.json` と `run_ci_tests.py` による CI テスト分類・所有権・変更範囲別ジョブ選択の仕様 | `tests/ci_test_groups.json`, `scripts/run_ci_tests.py`, `scripts/ci_impact.py`, `scripts/check_unittest_discovery.py`, `.github/workflows/ci.yml` | Active |
 | [validation-ownership.md](validation-ownership.md) | 開発者 | 通常 CI（`ci.yml`）と `Release readiness`（`release-readiness.yml`）の間での PR 仮マージ commit 検証責務の分担契約 | `scripts/release_readiness.py`, `scripts/release_candidate.py`, `.github/workflows/ci.yml`, `.github/workflows/release-readiness.yml` | Active |
 | [GUI_PERFORMANCE.md](GUI_PERFORMANCE.md) | 開発者 | 3,000 件／10,000 件字幕プロジェクトに対する GUI 性能ベンチマーク 8 シナリオ、閾値、CI matrix 運用仕様 | `scripts/run_gui_performance.py`, `scripts/generate_large_gui_fixture.py`, `scripts/compare_gui_performance.py`, `scripts/aggregate_gui_performance.py`, `scripts/plan_gui_performance.py`, `tests/gui_performance_scenarios.py`, `.github/workflows/gui-performance.yml` | Active |
