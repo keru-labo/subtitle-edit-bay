@@ -1022,6 +1022,16 @@ class WindowsLauncherTests(TypedTestCase):
 
         self.assertNotIn("reset --hard", updater)
 
+    def test_zip_update_uses_framework_compatible_extraction_overload(self) -> None:
+        updater = (ROOT / "scripts" / "update.ps1").read_text(encoding="utf-8")
+
+        self.assertIn("Add-Type -AssemblyName System.IO.Compression.FileSystem", updater)
+        self.assertIn(
+            "[System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $extractRoot)",
+            updater,
+        )
+        self.assertNotIn("Expand-Archive", updater)
+
     @typed_skip_unless_method(os.name == "nt", "Windows is required")
     def test_zip_release_update_downloads_and_preserves_local_data(self) -> None:
         powershell = self._require_windows_powershell()
