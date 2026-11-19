@@ -28,7 +28,7 @@
 | [PROCESS_PROGRESS.md](PROCESS_PROGRESS.md) | 利用者 / 開発者 | 画面下部の処理進捗パネルの記号、全体進捗、システムログ、`PROGRESS_EVENT` の見方 | `src/processing_progress.py`, `src/application_logging.py`, `src/gui_workflow_facade.py`, `src/ui/components/ProcessingProgressPanel.qml`, `src/ui/components/ApplicationLogPanel.qml` | Active |
 | [SUBTITLE_LINE_COUNT.md](SUBTITLE_LINE_COUNT.md) | 利用者 / 開発者 | 字幕の自動改行・`Enter` による手動改行の操作方法、旧行数設定からの移行、ページ分割の時刻配分規則 | `src/subtitle_line_count.py`, `src/subtitle_line_count_config.py`, `src/subtitle_packer.py`, `src/subtitle_layout/` | Active |
 | [CODEX_CHAT.md](CODEX_CHAT.md) | 利用者 / 開発者 | Codex チャットのログイン、モデル選択、字幕編集提案の操作手順と `AIProvider` セキュリティ境界 | `src/ai_provider.py`, `src/codex_ai_provider.py`, `src/gemini_acp_provider.py`, `src/gui_ai_chat_state.py`, `src/gui_codex_chat_state.py`, `src/gui_ai_facade.py`, `src/ui/components/CodexChatPanel.qml` | Active |
-| [CODEX_EDITING.md](CODEX_EDITING.md) | 利用者 / 開発者 | Codex を使った字幕編集提案の導入、対象範囲 5 種の選択、データ保護、診断手順 | `src/codex_edit_proposal.py`, `src/gui_codex_state.py`, `src/gui_ai_facade.py`, `src/ui/components/CodexEditPanel.qml`, `src/ui/components/CodexChatPanel.qml` | Active |
+| [CODEX_EDITING.md](archive/CODEX_EDITING.md) | 利用者 / 開発者 | Codex を使った字幕編集提案の導入、対象範囲 5 種の選択、データ保護、診断手順（内容は CODEX_CHAT.md へ統合済み） | `src/codex_edit_proposal.py`, `src/gui_codex_state.py`, `src/gui_ai_facade.py`, `src/ui/components/CodexEditPanel.qml`, `src/ui/components/CodexChatPanel.qml` | Historical |
 
 ---
 
@@ -112,7 +112,7 @@ Ruff / mypy（`Any` 禁止）品質ゲート、CI テストグループ分類、
 | [archive/GAMEPLAY_ASR_TRIAL_2026-09-26.md](archive/GAMEPLAY_ASR_TRIAL_2026-09-26.md) | 開発者 | 2026-09-26 に特定の実況動画 1 本で行った ASR パラメータ比較試行の観察結果ログ（正本は `GAMEPLAY_ASR_EVALUATION.md`） | `src/whisperx_runner.py`, `src/transcription_profile.py` | Historical |
 | [archive/CONTEXT_ACTION_BAR.md](archive/CONTEXT_ACTION_BAR.md) | 開発者 | Issue #239 時点における `ContextActionBar.qml` と `CodexSidebarContainer.qml` の配置・操作責務メモ（正本は `GUI_ARCHITECTURE.md` / `workspace-actions.md`） | `src/ui/components/ContextActionBar.qml`, `src/ui/components/CodexSidebarContainer.qml`, `src/ui/screens/MainWorkflowScreen.qml` | Historical |
 | [archive/short-mode-design.md](archive/short-mode-design.md) | 開発者 | 初期のショート機能追加時の設計資料および FFmpeg フィルタ図解（現在の状態境界の正本は `SHORT_WORKSPACE.md`） | `src/short_video.py`, `src/short_video_schema.py`, `src/short_video_ass.py`, `src/ui/screens/ShortModeScreen.qml` | Historical |
-| [UI_MOCK_ALIGNMENT.md](UI_MOCK_ALIGNMENT.md) | 開発者 | Issue #440 における `ui-redesign-mockup.html` の反映内容、クリップ別字幕絞り込み仕様、残差分と確認手順の記録 | `src/subtitle_clip_filter.py`, `src/gui_subtitles_facade.py`, `src/ui/screens/MainWorkflowScreen.qml`, `src/ui/components/MediaBinPanel.qml`, `src/ui/components/SequenceEditorPanel.qml`, `src/ui/components/WorkspaceInspectorPanel.qml` | Historical |
+| [UI_MOCK_ALIGNMENT.md](archive/UI_MOCK_ALIGNMENT.md) | 開発者 | Issue #440 における `ui-redesign-mockup.html` の反映内容、クリップ別字幕絞り込み仕様、残差分と確認手順の記録 | `src/subtitle_clip_filter.py`, `src/gui_subtitles_facade.py`, `src/ui/screens/MainWorkflowScreen.qml`, `src/ui/components/MediaBinPanel.qml`, `src/ui/components/SequenceEditorPanel.qml`, `src/ui/components/WorkspaceInspectorPanel.qml` | Historical |
 | [archive/ui-test-review.md](archive/ui-test-review.md) | 開発者 | GUI テスト見直しの初回調査に PR ごとの修正・テスト追加履歴を時系列で累積した作業日誌（正本は `QUALITY.md`） | `tests/test_gui_editor.py`, `src/ui/`, `src/gui*.py` | Historical |
 
 ---
