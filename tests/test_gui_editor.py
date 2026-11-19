@@ -3186,6 +3186,87 @@ Window {
         self.app.redoEdit()
         self.assertEqual(self.app.subtitleSegments[0]["text"], "修正後")
 
+    def test_ai_subtitle_proposal_applies_only_checked_operation_from_screen(self) -> None:
+        path = self._load_project(segments=[
+            {"id": "unchecked-segment", "start": 0, "end": 1, "text": "変更しない"},
+            {"id": "selected-segment", "start": 2, "end": 3, "text": "選択対象"},
+        ])
+        authenticated = CodexChatSnapshot(
+            connection_state="ready", auth_state="authenticated", auth_label="ChatGPT",
+        )
+        self.app._codex_chat._snapshot = authenticated
+        self.app._on_codex_chat_state(authenticated)
+        revision = self.app._project_revision
+        self.app._codex_proposal = {
+            "summary": "2件の字幕編集",
+            "warnings": [],
+            "base_revision": revision,
+            "operations": [
+                {
+                    "id": "edit-unchecked",
+                    "type": "update_segment",
+                    "segment_id": "unchecked-segment",
+                    "changes": {"text": "適用されてはいけない字幕"},
+                },
+                {
+                    "id": "edit-selected",
+                    "type": "update_segment",
+                    "segment_id": "selected-segment",
+                    "changes": {"text": "適用された字幕"},
+                },
+            ],
+        }
+        self.app.codexProposalChanged.emit()
+        _, window = self._load_qml()
+        self.gui.resize(window, 1220, 760)
+        proposal_list = self._quick_item(window, "codexProposalList")
+        self.gui.wait_until(
+            lambda: _qt_number(proposal_list, "count") == 2,
+            description="2件の字幕提案が表示される",
+        )
+
+        def unchecked_operation_check() -> QQuickItem:
+            for item in self.gui.visual_items(proposal_list):
+                if item.objectName() != "codexOperationCheck":
+                    continue
+                delegate = item.parentItem()
+                if delegate is not None and qt_property_value(delegate, "operationId") == "edit-unchecked":
+                    return item
+            raise AssertionError("未適用対象の操作チェックボックスが表示されません")
+
+        operation_check = unchecked_operation_check()
+        self.assertTrue(_qt_bool(operation_check, "checked"))
+        self._click(window, operation_check)
+        self.gui.wait_until(
+            lambda: not _qt_bool(unchecked_operation_check(), "checked"),
+            description="未適用対象だけ選択解除",
+        )
+        apply_button = self._quick_item(window, "codexApplyButton")
+        self.assertTrue(apply_button.isEnabled())
+        self._click(window, apply_button)
+
+        segments = self.app.subtitleSegments
+        self.assertEqual(segments[0]["text"], "変更しない")
+        self.assertEqual(segments[1]["text"], "適用された字幕")
+        self.assertEqual(self.app._project_revision, revision + 1)
+        self.assertTrue(self.app.subtitles.canUndo)
+
+        save_button = self._quick_item(window, "workspaceHeaderSaveButton")
+        self._click(window, save_button)
+        saved_segments = _dict_list_at(load_project(path), "segments")
+        self.assertEqual(saved_segments[0]["text"], "変更しない")
+        self.assertEqual(saved_segments[1]["text"], "適用された字幕")
+
+        undo_button = self._quick_item(window, "workspaceSubtitleUndoButton")
+        self.assertTrue(undo_button.isEnabled())
+        self._click(window, undo_button)
+        self.assertEqual(self.app.subtitleSegments[0]["text"], "変更しない")
+        self.assertEqual(self.app.subtitleSegments[1]["text"], "選択対象")
+        self._click(window, save_button)
+        saved_segments = _dict_list_at(load_project(path), "segments")
+        self.assertEqual(saved_segments[0]["text"], "変更しない")
+        self.assertEqual(saved_segments[1]["text"], "選択対象")
+
     def test_ai_proposals_are_locked_during_processing_and_recover(self) -> None:
         path = self._load_project()
         authenticated = CodexChatSnapshot(
