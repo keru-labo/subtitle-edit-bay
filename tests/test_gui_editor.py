@@ -5593,6 +5593,80 @@ Window {
         self._click(window, redo_button)
         self.assertEqual(self.app.cutTimeline["cuts"][0]["source_start"], 5.0)
 
+    def test_workspace_cut_timeline_drag_selects_range_in_both_directions(self) -> None:
+        """Windows GUI CI必須: 実ドラッグ方向に依存せず選択範囲を追加・保存・Undoできる。"""
+        path = self._load_project(duration_seconds=30.0)
+        _, window = self._load_qml()
+        self.gui.resize(window, 1220, 760)
+        self._click(window, self._quick_item(window, "editorModeButton-cut"))
+        timeline = self._quick_item(window, "workspaceCutTimeline")
+        settings = self._quick_item(window, "workspaceCutSettings")
+        self.assertTrue(timeline.isVisible())
+
+        def drag_range(start_fraction: float, end_fraction: float) -> tuple[float, float]:
+            start = timeline.mapToScene(
+                QPointF(timeline.width() * start_fraction, timeline.height() * 0.65)
+            ).toPoint()
+            end = timeline.mapToScene(
+                QPointF(timeline.width() * end_fraction, timeline.height() * 0.65)
+            ).toPoint()
+            QTest.mousePress(window, Qt.MouseButton.LeftButton, pos=start)
+            distance = end - start
+            for fraction in (0.2, 0.4, 0.6, 0.8, 1.0):
+                point = start + distance * fraction
+                QTest.mouseMove(window, point, 30)
+            QTest.mouseRelease(window, Qt.MouseButton.LeftButton, pos=end)
+            self.app.processEvents()
+            lower = min(start_fraction, end_fraction) * 30.0
+            upper = max(start_fraction, end_fraction) * 30.0
+            return lower, upper
+
+        expected_forward = drag_range(0.2, 0.4)
+        self.gui.wait_until(
+            lambda: abs(coerce_float(qt_property_value(window, "cutSelectionStartMs")) - expected_forward[0] * 1000) < 300
+            and abs(coerce_float(qt_property_value(window, "cutSelectionEndMs")) - expected_forward[1] * 1000) < 300,
+            description="forward cut timeline drag selection",
+        )
+        start_field = self._quick_visual_item(settings, "cutRangeStartField")
+        end_field = self._quick_visual_item(settings, "cutRangeEndField")
+        self.assertAlmostEqual(coerce_float(_qt_string(start_field, "text")), expected_forward[0], delta=0.3)
+        self.assertAlmostEqual(coerce_float(_qt_string(end_field, "text")), expected_forward[1], delta=0.3)
+        self._click(window, self._quick_visual_item(settings, "addCutButton"))
+
+        expected_reverse = drag_range(0.7, 0.5)
+        self.gui.wait_until(
+            lambda: abs(coerce_float(qt_property_value(window, "cutSelectionStartMs")) - expected_reverse[0] * 1000) < 300
+            and abs(coerce_float(qt_property_value(window, "cutSelectionEndMs")) - expected_reverse[1] * 1000) < 300,
+            description="reverse cut timeline drag selection",
+        )
+        self.assertAlmostEqual(coerce_float(_qt_string(start_field, "text")), expected_reverse[0], delta=0.3)
+        self.assertAlmostEqual(coerce_float(_qt_string(end_field, "text")), expected_reverse[1], delta=0.3)
+        self._click(window, self._quick_visual_item(settings, "addCutButton"))
+
+        cuts = self.app.cutTimeline["cuts"]
+        self.assertEqual(len(cuts), 2)
+        self.assertAlmostEqual(coerce_float(cuts[0]["source_start"]), expected_forward[0], delta=0.3)
+        self.assertAlmostEqual(coerce_float(cuts[0]["source_end"]), expected_forward[1], delta=0.3)
+        self.assertAlmostEqual(coerce_float(cuts[1]["source_start"]), expected_reverse[0], delta=0.3)
+        self.assertAlmostEqual(coerce_float(cuts[1]["source_end"]), expected_reverse[1], delta=0.3)
+
+        self._click(window, self._quick_visual_item(settings, "undoCutButton"))
+        self.assertEqual(len(self.app.cutTimeline["cuts"]), 1)
+        self.assertAlmostEqual(coerce_float(self.app.cutTimeline["cuts"][0]["source_start"]), expected_forward[0], delta=0.3)
+        save_button = self._quick_item(window, "workspaceHeaderSaveButton")
+        self.assertTrue(save_button.isEnabled())
+        self._click(window, save_button)
+        self.assertFalse(self.app.projectDirty)
+        saved_cuts = _dict_list_at(load_project(path), "timeline", "cuts")
+        self.assertEqual(len(saved_cuts), 1)
+        self.assertAlmostEqual(coerce_float(saved_cuts[0]["source_start"]), expected_forward[0], delta=0.3)
+        self.assertAlmostEqual(coerce_float(saved_cuts[0]["source_end"]), expected_forward[1], delta=0.3)
+        self.app.loadProject(str(path))
+        self.assertTrue(self.app.projectLoaded)
+        self.assertEqual(len(self.app.cutTimeline["cuts"]), 1)
+        self.assertAlmostEqual(coerce_float(self.app.cutTimeline["cuts"][0]["source_start"]), expected_forward[0], delta=0.3)
+        self.assertAlmostEqual(coerce_float(self.app.cutTimeline["cuts"][0]["source_end"]), expected_forward[1], delta=0.3)
+
     def test_workspace_cut_settings_follow_undo_redo_and_merged_boundaries(self) -> None:
         self._load_project(duration_seconds=30.0)
         self.app.addCut(5.0, 7.0)
