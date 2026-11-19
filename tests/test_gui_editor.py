@@ -13948,7 +13948,8 @@ Window {
             QUrl.fromLocalFile(str(third_video.resolve())),
         ])
 
-        with patch("src.gui_sequence_facade.probe_media_duration", side_effect=[8.0, 6.0]):
+        durations: list[float] = [8.0, 6.0]
+        with patch("src.gui_sequence_facade.probe_media_duration", side_effect=durations):
             outside = QPoint(window.width() - 10, window.height() - 10)
             enter = QDragEnterEvent(
                 outside, Qt.DropAction.CopyAction, mime,
