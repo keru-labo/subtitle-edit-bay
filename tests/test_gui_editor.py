@@ -24,7 +24,7 @@ os.environ.setdefault("QT_QUICK_BACKEND", "software")
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 from PySide6.QtCore import QCoreApplication, QEvent, QMetaObject, QMimeData, QObject, QPoint, QPointF, QProcess, QTimer, Qt, QUrl
-from PySide6.QtGui import QColor, QDragEnterEvent, QDropEvent, QFont, QInputMethodEvent, QKeySequence
+from PySide6.QtGui import QColor, QDragEnterEvent, QDragMoveEvent, QDropEvent, QFont, QInputMethodEvent, QKeySequence
 from PySide6.QtMultimedia import QAudioBuffer, QAudioFormat, QMediaPlayer
 from PySide6.QtQml import QJSValue, QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem, QQuickWindow
@@ -13930,6 +13930,106 @@ Window {
         self.assertEqual(len(saved_assets), 2)
         self.assertEqual(Path(_string_at(saved_assets[-1], 'path')), second_video.resolve())
         self.assertFalse(self.app.projectDirty)
+
+    def test_media_bin_url_drop_adds_assets_through_qt_drop_events(self) -> None:
+        """Windows GUI CI必須: media binのURL DropAreaを実dropイベントで検証する。"""
+        path, _first_video, second_video = self._make_sequence_project()
+        third_video = self.root / "third asset.mp4"
+        third_video.write_bytes(b"third video fixture")
+        _, window = self._load_qml()
+        self.gui.resize(window, 1220, 760)
+        target = self._quick_item(window, "mediaBinDropArea")
+        self.gui.wait_until(target.isVisible, description="media bin URL drop target")
+        self.assertTrue(target.isEnabled())
+        point = target.mapToScene(QPointF(target.width() / 2, target.height() / 2)).toPoint()
+        mime = QMimeData()
+        mime.setUrls([
+            QUrl.fromLocalFile(str(second_video.resolve())),
+            QUrl.fromLocalFile(str(third_video.resolve())),
+        ])
+
+        durations: list[float] = [8.0, 6.0]
+        with patch("src.gui_sequence_facade.probe_media_duration", side_effect=durations):
+            outside = QPoint(window.width() - 10, window.height() - 10)
+            enter = QDragEnterEvent(
+                outside, Qt.DropAction.CopyAction, mime,
+                Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
+            )
+            QCoreApplication.sendEvent(window, enter)
+            self.assertTrue(enter.isAccepted())
+            self.assertTrue(qt_property_value(window, "acceptingSourceDrop"))
+            move = QDragMoveEvent(
+                point, Qt.DropAction.CopyAction, mime,
+                Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
+            )
+            QCoreApplication.sendEvent(window, move)
+            self.assertTrue(move.isAccepted())
+            self.assertFalse(qt_property_value(window, "acceptingSourceDrop"))
+            drop = QDropEvent(
+                QPointF(point), Qt.DropAction.CopyAction, mime,
+                Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
+            )
+            QCoreApplication.sendEvent(window, drop)
+
+        self.assertTrue(drop.isAccepted())
+        assets = self.app.mediaBinAssets
+        self.assertEqual(len(assets), 3)
+        self.assertEqual(
+            [Path(str(asset["path"])).resolve() for asset in assets[1:]],
+            [second_video.resolve(), third_video.resolve()],
+        )
+        self.assertEqual(len(_list_at(load_project(path), "sequence", "assets")), 1)
+        self._click(window, self._quick_item(window, "workspaceHeaderSaveButton"))
+        self.gui.wait_until(lambda: not self.app.projectDirty, description="media bin drop saved")
+        saved_assets = _dict_list_at(load_project(path), "sequence", "assets")
+        self.assertEqual(len(saved_assets), 3)
+        self.assertEqual(
+            [Path(_string_at(asset, "path")).resolve() for asset in saved_assets[1:]],
+            [second_video.resolve(), third_video.resolve()],
+        )
+
+    def test_media_bin_url_drop_rejects_invalid_and_busy_imports(self) -> None:
+        """Windows GUI CI必須: 無効URLと処理中のdropで素材を変更しない。"""
+        _path, _first_video, _second_video = self._make_sequence_project()
+        missing = self.root / "missing.mp4"
+        _, window = self._load_qml()
+        self.gui.resize(window, 1220, 760)
+        target = self._quick_item(window, "mediaBinDropArea")
+        self.gui.wait_until(target.isVisible, description="media bin URL drop target")
+        point = target.mapToScene(QPointF(target.width() / 2, target.height() / 2)).toPoint()
+        original_assets = deepcopy(self.app.mediaBinAssets)
+        mime = QMimeData()
+        mime.setUrls([QUrl.fromLocalFile(str(missing.resolve()))])
+        enter = QDragEnterEvent(
+            point, Qt.DropAction.CopyAction, mime,
+            Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
+        )
+        QCoreApplication.sendEvent(window, enter)
+        self.assertTrue(enter.isAccepted())
+        drop = QDropEvent(
+            QPointF(point), Qt.DropAction.CopyAction, mime,
+            Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
+        )
+        QCoreApplication.sendEvent(window, drop)
+        self.assertTrue(drop.isAccepted())
+        self.assertEqual(self.app.mediaBinAssets, original_assets)
+        self.assertTrue(self.app.sequenceError)
+
+        self.app._running = True
+        self.app.runningChanged.emit()
+        self.app.processEvents()
+        self.assertFalse(target.isEnabled())
+        other = self.root / "busy.mp4"
+        other.write_bytes(b"busy video fixture")
+        busy_mime = QMimeData()
+        busy_mime.setUrls([QUrl.fromLocalFile(str(other.resolve()))])
+        busy_enter = QDragEnterEvent(
+            point, Qt.DropAction.CopyAction, busy_mime,
+            Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
+        )
+        QCoreApplication.sendEvent(window, busy_enter)
+        self.assertFalse(busy_enter.isAccepted())
+        self.assertEqual(self.app.mediaBinAssets, original_assets)
 
     def test_sequence_remove_button_undo_redo_and_save_from_screen(self) -> None:
         path, _first_video, second_video = self._make_sequence_project()
