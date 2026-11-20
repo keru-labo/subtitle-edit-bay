@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.20)
+project(subtitle_preview LANGUAGES CXX)
+
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(seek_gate_test ../../tests/preview/seek_gate_test.cpp)
+    target_include_directories(seek_gate_test PRIVATE .)
+    target_compile_features(seek_gate_test PRIVATE cxx_std_17)
+    add_test(NAME seek_gate COMMAND seek_gate_test)
+endif()
