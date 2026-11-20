@@ -5286,7 +5286,7 @@ Window {
         self.assertFalse(self.app.saveSettings(_qml_settings(window)))
         self.assertFalse(self.app.saveSettings({**_qml_settings(window), "speech_threshold_db": None}))
         self.assertEqual(self.app.settings, original_settings)
-        self.assertEqual(config_path.read_bytes(), original_config)
+        self.assertEqual(config_path.read_bytes() if config_path.exists() else None, original_config)
 
         threshold_field.setProperty("text", "-35")
         self.app.processEvents()
