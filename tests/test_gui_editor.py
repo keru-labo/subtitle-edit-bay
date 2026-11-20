@@ -13840,6 +13840,57 @@ Window {
                     self._assert_quick_item_within(owner, control)
                     self._assert_quick_item_within(window.contentItem(), control)
 
+    def test_short_background_color_rejection_keeps_draft_and_retries_before_leaving(self) -> None:
+        path = self._load_project()
+        self.app.initializeShortVideoClips()
+        _, window = self._load_qml()
+        self._click(window, self._quick_item(window, "workspaceHeaderShortButton"))
+        color_field = self._quick_item(window, "shortModeBackgroundColorField")
+        self._click(window, color_field)
+        QTest.keySequence(window, QKeySequence(QKeySequence.StandardKey.SelectAll))
+        for char in "123456":
+            QTest.keyClick(window, Qt.Key(ord(char)))
+        self.assertEqual(_qt_string(color_field, "text"), "123456")
+        self.assertEqual(self.app.shortVideo.shortVideoSettings["global_background_color"], "000000")
+
+        setter = self.app.shortVideo.setShortVideoGlobalBackgroundColor
+        setter_calls: list[str] = []
+
+        allow_setter = False
+
+        def reject_until_permitted(color: str) -> bool:
+            setter_calls.append(color)
+            if not allow_setter:
+                return False
+            return setter(color)
+
+        with patch.object(
+            self.app.shortVideo,
+            "setShortVideoGlobalBackgroundColor",
+            side_effect=reject_until_permitted,
+        ):
+            self._click(window, self._quick_item(window, "shortModeBackButton"))
+            color_field = self._quick_item(window, "shortModeBackgroundColorField")
+            self.assertEqual(_qt_string(color_field, "text"), "123456")
+            self.assertTrue(qt_property_value(color_field, "draftEdited"))
+            self.assertEqual(self.app.currentWorkspace, "short-artifact")
+            validation_message = self._quick_item(window, "shortModeInputValidationMessage")
+            self.assertTrue(validation_message.isVisible())
+            self.assertIn("設定を保存できません", _qt_string(validation_message, "text"))
+            self.assertEqual(self.app.shortVideo.shortVideoSettings["global_background_color"], "000000")
+
+            self.assertTrue(setter_calls)
+            self.assertTrue(all(color == "123456" for color in setter_calls))
+            allow_setter = True
+            self._click(window, self._quick_item(window, "shortModeBackButton"))
+            self.assertEqual(self.app.currentWorkspace, "normal-video")
+            self.assertEqual(self.app.shortVideo.shortVideoSettings["global_background_color"], "#123456")
+            self.assertGreater(len(setter_calls), 1)
+            self.assertTrue(all(color == "123456" for color in setter_calls))
+
+        self._click(window, self._quick_item(window, "workspaceHeaderSaveButton"))
+        self.assertEqual(_value_at(load_project(path), "short_video", "global_background_color"), "#123456")
+
     def test_short_background_color_dialog_applies_selected_color(self) -> None:
         self._load_project()
         _, window = self._load_qml()
