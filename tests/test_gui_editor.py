@@ -11935,6 +11935,62 @@ Window {
         for field, expected in (("in", 0.5), ("out", 2.0), ("start", 1.0), ("volume", volume)):
             self.assertAlmostEqual(coerce_float(_value_at(saved, "bgm", field)), expected)
 
+    def test_short_bgm_file_dialog_cancel_preserves_selection_and_allows_retry(self) -> None:
+        path = self._load_project()
+        self.app.initializeShortVideoClips()
+        initial_bgm = self.root / "existing-short-mode-bgm.wav"
+        initial_bgm.write_bytes(b"existing audio fixture")
+        self.assertTrue(self.app.shortVideo.setShortVideoBgm({"path": str(initial_bgm)}))
+        self.assertTrue(self.app.saveProject())
+        initial_resolved_path = initial_bgm.resolve()
+        self.assertEqual(
+            _path_at(load_project(path), "short_video", "bgm", "path").resolve(),
+            initial_resolved_path,
+        )
+
+        _, window = self._load_qml()
+        self._click(window, self._quick_item(window, "workspaceHeaderShortButton"))
+        browse_button = self._quick_item(window, "shortModeBgmBrowseButton")
+        file_label = self._quick_item(window, "shortModeBgmFileLabel")
+        initial_setting = str(_value_at(self.app.shortVideo.shortVideoSettings, "bgm", "path"))
+        initial_label = _qt_string(file_label, "text")
+        self.assertEqual(Path(initial_setting).resolve(), initial_resolved_path)
+
+        with patch(
+            "src.gui_short_video_facade.QFileDialog.getOpenFileName",
+            return_value=("", ""),
+        ) as choose_bgm:
+            self._click(window, browse_button)
+        choose_bgm.assert_called_once()
+        self.assertEqual(str(_value_at(self.app.shortVideo.shortVideoSettings, "bgm", "path")), initial_setting)
+        self.assertEqual(_qt_string(file_label, "text"), initial_label)
+        self.assertEqual(
+            _path_at(load_project(path), "short_video", "bgm", "path").resolve(),
+            initial_resolved_path,
+        )
+
+        replacement_bgm = self.root / "replacement-short-mode-bgm.wav"
+        replacement_bgm.write_bytes(b"replacement audio fixture")
+        with patch(
+            "src.gui_short_video_facade.QFileDialog.getOpenFileName",
+            return_value=(str(replacement_bgm), ""),
+        ) as choose_bgm:
+            self._click(window, browse_button)
+        choose_bgm.assert_called_once()
+        replacement_resolved_path = replacement_bgm.resolve()
+        self.assertEqual(
+            Path(str(_value_at(self.app.shortVideo.shortVideoSettings, "bgm", "path"))).resolve(),
+            replacement_resolved_path,
+        )
+        self.assertEqual(Path(_qt_string(file_label, "text")).resolve(), replacement_resolved_path)
+
+        self._click(window, self._quick_item(window, "shortModeBackButton"))
+        self._click(window, self._quick_item(window, "workspaceHeaderSaveButton"))
+        self.assertEqual(
+            _path_at(load_project(path), "short_video", "bgm", "path").resolve(),
+            replacement_resolved_path,
+        )
+
     def test_short_mode_sliders_follow_full_drag_and_save(self) -> None:
         project_path = self._load_project()
         _, window = self._load_qml()
