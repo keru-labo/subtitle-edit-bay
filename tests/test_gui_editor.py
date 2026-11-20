@@ -655,6 +655,42 @@ Window {
         self.gui.process_events()
         self.assertTrue(combo.isEnabled())
 
+    @typed_skip_unless_method(shutil.which("ffmpeg") and shutil.which("ffprobe"), "ffmpeg and ffprobe required")
+    def test_subtitle_timeline_background_click_seeks_shared_player_with_scroll_offset(self) -> None:
+        """Windows GUI CI必須: 字幕タイムライン背景クリックはスクロール込みの時刻へseekする。"""
+        path, _, audio = self._make_project(duration_seconds=30.0)
+        self._generate_black_test_video_with_audio(self.root / "game.mkv", audio, duration_seconds=30)
+        self.assertTrue(self.app._load_project_path(path, update_sources=True))
+        self._prime_audio_preview_cache()
+        _, window = self._load_qml()
+        self.gui.resize(window, 1220, 760)
+        timeline = self._quick_item(window, "workspaceSubtitleTimeline")
+        player = self.gui.find_object(window, "mainWorkspacePlayer", QMediaPlayer)
+        self.gui.wait_until(lambda: player.duration() >= 29_500, description="Subtitle timeline preview media")
+        pixels_per_second = coerce_float(_qt_number(timeline, "pixelsPerSecond"))
+        self.assertGreater(pixels_per_second, 0)
+
+        def click_background_at(viewport_x: float, seek_viewport_x: float) -> float:
+            timeline.setProperty("viewportX", viewport_x)
+            self.app.processEvents()
+            actual_scroll = coerce_float(_qt_number(timeline, "viewportX"))
+            # The background ruler is above caption lanes, so this is a seek, not a clip drag.
+            point = timeline.mapToScene(QPointF(86 + seek_viewport_x, 10)).toPoint()
+            QTest.mouseClick(window, Qt.MouseButton.LeftButton, pos=point)
+            self.app.processEvents()
+            expected_ms = (actual_scroll + seek_viewport_x) / pixels_per_second * 1000
+            self.gui.wait_until(
+                lambda: abs(player.position() - expected_ms) < 200,
+                description=f"subtitle timeline background seek to {expected_ms:.0f} ms",
+            )
+            return expected_ms
+
+        first_expected = click_background_at(0, 160)
+        self.assertAlmostEqual(player.position(), first_expected, delta=200)
+        scrolled_expected = click_background_at(220, 180)
+        self.assertGreater(scrolled_expected, first_expected)
+        self.assertAlmostEqual(player.position(), scrolled_expected, delta=200)
+
     def test_subtitle_clip_filter_does_not_hide_expanded_editor_timeline(self) -> None:
         """Windows GUI CI必須: 拡大編集では全字幕の一覧と波形を表示し、戻るとクリップ絞り込みを保つ。"""
         _, clip_id = self._load_subtitle_clip_project()
