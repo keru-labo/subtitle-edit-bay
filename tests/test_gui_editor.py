@@ -8897,6 +8897,27 @@ Window {
 
         self.gui.assert_no_messages_containing("TypeError", since=message_start)
 
+    def test_mixer_save_shortcut_persists_ui_audio_edit(self) -> None:
+        path = self._load_project()
+        with patch.object(self.app.autosave_timer, "start"):
+            _, window = self._load_qml()
+            self.app.audio.clearAudioPreviewCache()
+            with patch("src.gui_audio_facade.AudioFacade.prepareAudioMixerPreview"):
+                self._click(window, self._quick_item(window, "audioMixerOpenButton"))
+            external_strip = self._quick_visual_item(
+                self._quick_item(window, "mixerChannelList"), "mixerChannelStrip-1"
+            )
+            checkbox = self._quick_visual_item(external_strip, "mixerChannelEnabledCheck")
+            self._click(window, checkbox)
+            expected = deepcopy(_value_at(self.app._project, "audio_mix"))
+            self.assertTrue(self.app.audioMixerChannels[1]["enabled"])
+            self.assertNotEqual(load_project(path)["audio_mix"], expected)
+
+            QTest.keySequence(window, QKeySequence(QKeySequence.StandardKey.Save))
+            self.app.processEvents()
+        self.assertEqual(load_project(path)["audio_mix"], expected)
+        self.assertFalse(self.app.projectDirty)
+
     def test_mixer_save_button_persists_pending_audio_edit(self) -> None:
         path = self._load_project()
         original = load_project(path)["audio_mix"]
@@ -11629,6 +11650,77 @@ Window {
         self.assertEqual(_qt_string(video_label, "text"), "未選択")
         self.assertEqual(self.app.stage, "CHECK")
         self.assertIn("検証に失敗", self.app.status)
+
+    def _load_playable_overlay_project(self) -> tuple[Path, QQuickWindow, QMediaPlayer]:
+        path = self._load_project(duration_seconds=8.0)
+        video = self.root / "game.mkv"
+        self._generate_black_test_video_with_audio(video, self.root / "1-alice.flac", duration_seconds=8)
+        self.assertTrue(self.app._load_project_path(path, update_sources=True))
+        self._prime_audio_preview_cache()
+        _, window = self._load_qml()
+        player = self.gui.find_object(window, "mainWorkspacePlayer", QMediaPlayer)
+        self.gui.wait_until(lambda: player.duration() >= 7_500, description="Overlay test preview media")
+        player.setPosition(2_500)
+        self.gui.wait_until(lambda: abs(player.position() - 2_500) < 200, description="Overlay test preview seek")
+        return path, window, player
+
+    def test_expanded_editor_escape_commits_caption_draft_and_returns_to_workspace(self) -> None:
+        path = self._load_project()
+        _, window = self._load_qml()
+        self._click(window, self._quick_item(window, "editSubtitlesButton"))
+        editor_page = self._quick_item(window, "editorPage")
+        caption = self._quick_visual_item(self._quick_item(window, "captionTable"), "captionTextArea")
+        self._click(window, caption)
+        self.assertTrue(caption.hasActiveFocus(), "Escape is sent to the actual focused editor input")
+        QTest.keySequence(window, QKeySequence(QKeySequence.StandardKey.SelectAll))
+        for char in "escape draft":
+            QTest.keyClick(window, Qt.Key(ord(char.upper())))
+        self.app.processEvents()
+        self.assertEqual(_qt_string(caption, "text"), "escape draft")
+
+        QTest.keyClick(window, Qt.Key.Key_Escape)
+        self.app.processEvents()
+        self.assertFalse(editor_page.isVisible())
+        self.assertEqual(qt_property_value(window, "activeOverlay"), "")
+        self.assertEqual(self.app.segmentAt(0)["text"], "escape draft")
+        self._click(window, self._quick_item(window, "workspaceSubtitleSaveButton"))
+        self.assertEqual(_value_at(load_project(path), 'segments', 0, 'text'), "escape draft")
+
+    @typed_skip_unless_method(shutil.which("ffmpeg") and shutil.which("ffprobe"), "ffmpeg and ffprobe required")
+    def test_mixer_escape_closes_screen_and_restores_shared_player(self) -> None:
+        _, window, player = self._load_playable_overlay_project()
+        original_position = player.position()
+        self.app.audio.clearAudioPreviewCache()
+        self._click(window, self._quick_item(window, "audioMixerOpenButton"))
+        mixer_page = self._quick_item(window, "mixerPage")
+        self.gui.wait_until(lambda: mixer_page.hasActiveFocus(), description="Mixer screen keyboard focus")
+        self.gui.wait_until(
+            lambda: not self.app.audioPreviewPreparing,
+            description="Mixer screen audio preview preparation",
+            timeout_ms=15_000,
+        )
+        self.assertEqual(player.position(), original_position)
+
+        QTest.keyClick(window, Qt.Key.Key_Escape)
+        self.app.processEvents()
+        self.assertFalse(mixer_page.isVisible())
+        self.assertEqual(qt_property_value(window, "activeOverlay"), "")
+        self.assertEqual(player.position(), original_position)
+
+    @typed_skip_unless_method(shutil.which("ffmpeg") and shutil.which("ffprobe"), "ffmpeg and ffprobe required")
+    def test_short_workspace_escape_returns_to_normal_player_state(self) -> None:
+        _, window, player = self._load_playable_overlay_project()
+        original_position = player.position()
+        self._click(window, self._quick_item(window, "workspaceHeaderShortButton"))
+        short_page = self._quick_item(window, "shortModePage")
+        self.gui.wait_until(lambda: short_page.hasActiveFocus(), description="Short workspace keyboard focus")
+        self.assertEqual(self.app.currentWorkspace, "short-artifact")
+
+        QTest.keyClick(window, Qt.Key.Key_Escape)
+        self.app.processEvents()
+        self.gui.wait_until(lambda: self.app.currentWorkspace == "normal-video", description="Short Escape workspace restore")
+        self.assertFalse(short_page.isVisible())
+        self.assertAlmostEqual(player.position(), original_position, delta=200)
 
     def test_short_mode_screen_opens_and_closes(self) -> None:
         self._load_project()
