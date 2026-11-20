@@ -14290,6 +14290,50 @@ Window {
         self.assertAlmostEqual(coerce_float(_value_at(load_project(path), 'sequence', 'clips', 0, 'source_end')), coerce_float(8.5))
         self.assertFalse(self.app.projectDirty)
 
+    def test_sequence_invalid_typed_trim_is_rejected_and_recovers(self) -> None:
+        """Windows GUI CI必須: 無効な範囲入力は元に戻し、次の有効入力を受け付ける。"""
+        path, _first_video, _second_video = self._make_sequence_project()
+        original = deepcopy(self.app.sequenceClips)
+        saved_before = path.read_bytes()
+        _, window = self._load_qml()
+        self._click(window, self._quick_item(window, "editorModeButton-cut"))
+        self._click(window, self._quick_item(window, "sequenceToolButton"))
+        clip_list = self._quick_item(window, "sequenceClipList")
+        self.gui.wait_until(
+            lambda: self._quick_visual_item(clip_list, "sequenceClipEndField").isVisible(),
+            description="シーケンスの終了時刻入力欄",
+        )
+        end_field = self._quick_visual_item(clip_list, "sequenceClipEndField")
+        self._click(window, end_field)
+        self._replace_focused_time(window, end_field, "0.000")
+        QTest.keyClick(window, Qt.Key.Key_Tab)
+        self.gui.process_events()
+
+        self.assertEqual(self.app.sequenceClips, original)
+        self.assertFalse(self.app.projectDirty)
+        self.assertFalse(self.app.canUndo)
+        self.assertTrue(self.app.sequenceError.startswith("sequenceを変更できません:"))
+        self.assertEqual(_qt_string(end_field, "text"), "10.000")
+        self.assertEqual(path.read_bytes(), saved_before)
+
+        self._click(window, end_field)
+        self._replace_focused_time(window, end_field, "8.500")
+        QTest.keyClick(window, Qt.Key.Key_Tab)
+        self.gui.wait_until(
+            lambda: coerce_float(self.app.sequenceClips[0]["sourceEnd"]) == 8.5,
+            description="有効な終了時刻への復旧",
+        )
+        self.assertEqual(self.app.sequenceError, "")
+        self.assertTrue(self.app.projectDirty)
+        self.assertTrue(self.app.canUndo)
+        with patch.object(self.app.autosave_timer, "start"):
+            self._click(window, self._quick_item(window, "workspaceHeaderSaveButton"))
+        self.assertEqual(
+            coerce_float(_value_at(load_project(path), "sequence", "clips", 0, "source_end")),
+            8.5,
+        )
+        self.assertFalse(self.app.projectDirty)
+
     def test_sequence_audio_controls_from_card_are_saved(self) -> None:
         path, _first_video, _second_video = self._make_sequence_project()
         _, window = self._load_qml()
