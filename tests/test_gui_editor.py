@@ -7255,6 +7255,44 @@ Window {
     def test_pending_text_delete_preserves_neighbor_in_expanded_editor(self) -> None:
         self._assert_pending_text_delete_preserves_neighbor(expanded=True)
 
+    def test_expanded_editor_delete_undo_redo_shortcuts_use_selected_subtitle(self) -> None:
+        """拡大字幕画面のショートカットは本文欄外から選択字幕に作用する。"""
+        path = self._load_project(segments=[
+            {"id": "first", "start": 0, "end": 2, "text": "first"},
+            {"id": "second", "start": 2, "end": 4, "text": "second"},
+        ])
+        _, window = self._load_qml()
+        self._click(window, self._quick_item(window, "editSubtitlesButton"))
+        table = self._quick_item(window, "captionTable")
+        self.assertEqual(self.app.selectedSegmentIndex, 0)
+        # TextArea にフォーカスを置かず、標準のテキスト Undo と混同しない。
+        table.forceActiveFocus()
+        self.app.processEvents()
+        self.assertFalse(self._quick_visual_item(table, "captionTextArea").hasActiveFocus())
+
+        QTest.keyClick(window, Qt.Key.Key_Delete)
+        self.app.processEvents()
+        self.assertEqual(self.app.segmentCount, 1)
+        self.assertEqual(self.app.segmentAt(0)["id"], "second")
+        self.assertEqual(self.app.selectedSegmentIndex, 0)
+        self._click(window, self._quick_item(window, "saveProjectButton"))
+        self.assertEqual([s["id"] for s in _dict_list_at(load_project(path), "segments")], ["second"])
+
+        QTest.keySequence(window, QKeySequence(QKeySequence.StandardKey.Undo))
+        self.app.processEvents()
+        self.assertEqual(self.app.segmentCount, 2)
+        self.assertEqual(self.app.segmentAt(0)["id"], "first")
+        self._click(window, self._quick_item(window, "saveProjectButton"))
+        self.assertEqual([s["id"] for s in _dict_list_at(load_project(path), "segments")], ["first", "second"])
+
+        QTest.keySequence(window, QKeySequence(QKeySequence.StandardKey.Redo))
+        self.app.processEvents()
+        self.assertEqual(self.app.segmentCount, 1)
+        self.assertEqual(self.app.segmentAt(0)["id"], "second")
+        self._click(window, self._quick_item(window, "saveProjectButton"))
+        self.assertEqual([s["id"] for s in _dict_list_at(load_project(path), "segments")], ["second"])
+
+
     def test_pending_text_split_preserves_new_text_and_undo(self) -> None:
         path, window = self._prepare_pending_subtitle_text()
         self.app.setEditorPlayhead(2_000, "source")

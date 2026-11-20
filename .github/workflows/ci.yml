@@ -272,6 +272,7 @@ jobs:
           tests.test_gui_editor.GuiEditorRegressionTests.test_ai_subtitle_proposal_applies_only_checked_operation_from_screen
           tests.test_gui_editor.GuiEditorRegressionTests.test_ai_send_keeps_draft_until_a_model_is_selected
           tests.test_gui_editor.GuiEditorRegressionTests.test_ai_typed_audio_proposal_works_without_chat_model
+          tests.test_gui_editor.GuiEditorRegressionTests.test_expanded_editor_delete_undo_redo_shortcuts_use_selected_subtitle
           tests.test_gui_editor.GuiEditorRegressionTests.test_ai_rejected_typed_actions_keep_draft
           tests.test_gui_editor.GuiEditorRegressionTests.test_ai_subtitle_request_without_project_is_not_accepted
           tests.test_gui_editor.GuiEditorRegressionTests.test_audio_proposal_requires_explicit_click_to_mute_every_output
