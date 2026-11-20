@@ -350,6 +350,8 @@ jobs:
           tests.test_gui_editor.GuiEditorRegressionTests.test_progress_and_codex_controls_remain_clickable_together
           tests.test_gui_editor.GuiEditorRegressionTests.test_qml_update_dialog_flow
           tests.test_gui_editor.GuiEditorRegressionTests.test_qml_settings_round_trip_and_expanded_popup_fit
+          tests.test_gui_editor.GuiEditorRegressionTests.test_transcription_launch_uses_only_enabled_dictionary_context
+          tests.test_gui_editor.GuiEditorRegressionTests.test_transcription_launch_leaves_unconfirmed_context_inert
           tests.test_gui_editor.GuiEditorRegressionTests.test_qml_settings_write_failure_keeps_draft_for_retry
           tests.test_gui_editor.GuiEditorRegressionTests.test_render_quality_normalization_and_lufs_save_from_settings_screen
           tests.test_gui_editor.GuiEditorRegressionTests.test_subtitle_visual_settings_buttons_save_from_settings_screen
