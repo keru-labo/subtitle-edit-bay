@@ -328,6 +328,7 @@ jobs:
           tests.test_gui_editor.GuiEditorRegressionTests.test_expanded_save_shortcut_waits_for_uncommitted_ime_text
           tests.test_gui_editor.GuiEditorRegressionTests.test_expanded_split_control_recovers_after_processing
           tests.test_gui_editor.GuiEditorRegressionTests.test_header_render_selects_missing_output_and_keeps_project_location
+          tests.test_gui_editor.GuiEditorRegressionTests.test_normal_render_cancel_from_qml_restores_editing_without_output
           tests.test_gui_editor.GuiEditorRegressionTests.test_highlight_analysis_can_start_and_cancel_from_screen
           tests.test_gui_editor.GuiEditorRegressionTests.test_highlight_candidate_replaces_auto_clips_and_renders_once
           tests.test_gui_editor.GuiEditorRegressionTests.test_highlight_candidate_preserves_uncovered_and_manual_clips
@@ -385,6 +386,7 @@ jobs:
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_clip_time_survives_settings_change_before_return
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_background_color_dialog_cancel_preserves_value_and_allows_retry
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_background_color_dialog_applies_selected_color
+          tests.test_gui_editor.GuiEditorRegressionTests.test_short_export_cancel_from_progress_panel_keeps_workspace_retryable
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_export_saves_bgm_time_typed_without_return
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_export_saves_clip_time_typed_without_return
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_export_rejects_incomplete_color_after_focus_moves

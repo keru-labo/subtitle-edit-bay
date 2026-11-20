@@ -12785,6 +12785,56 @@ Window {
         shutil.which("ffmpeg") and shutil.which("ffprobe"),
         "ffmpeg and ffprobe required",
     )
+    def test_short_export_cancel_from_progress_panel_keeps_workspace_retryable(self) -> None:
+        path = self._load_project()
+        self.app.initializeShortVideoClips()
+        self.app._dependencies = RuntimeDependencyStatus(True, True, True, cuda=False)
+        helper_path = Path(__file__).with_name("fake_processing_process.py").resolve()
+
+        def build_wait_short(_config_path: Path, *, project_path: str, output_path: str) -> list[str]:
+            return [sys.executable, "-u", str(helper_path), "--mode", "wait"]
+
+        _, window = self._load_qml()
+        self._click(window, self._quick_item(window, "workspaceHeaderShortButton"))
+        short_page = self._quick_item(window, "shortModePage")
+        export_button = self._quick_item(window, "shortModeExportButton")
+        self.assertTrue(short_page.isVisible())
+        self.assertTrue(export_button.isEnabled())
+        output = Path(self.app.videoOutputDirectory)
+        short_output = output / f"{path.name.removesuffix('.subtitle-project.json')}.short.mp4"
+        self.assertFalse(short_output.exists())
+        started = QSignalSpy(self.app.process.started)
+        finished = QSignalSpy(self.app.process.finished)
+        with (
+            patch.object(self.app, "refreshDependencies"),
+            patch("src.workflow_actions.build_gui_short_video_command", side_effect=build_wait_short),
+        ):
+            self._click(window, export_button)
+            if started.count() == 0:
+                self.assertTrue(started.wait(10_000), self.app.process.errorString())
+            self.assertTrue(self.app.running)
+            self.assertEqual(self.app.activeJob, "render_short")
+            project_bytes_while_running = path.read_bytes()
+            self.assertFalse(short_output.exists())
+
+            progress_panel = self._quick_item(window, "processingProgressModePanel")
+            stop_button = self._quick_visual_item(progress_panel, "processingProgressStopButton")
+            self.assertTrue(stop_button.isVisible())
+            self.assertTrue(stop_button.isEnabled())
+            self._click(window, stop_button)
+            if finished.count() == 0:
+                self.assertTrue(finished.wait(10_000), self.app.process.errorString())
+            self.app.processEvents()
+
+        self.assertFalse(self.app.running)
+        self.assertEqual(self.app.process.state(), QProcess.ProcessState.NotRunning)
+        self.assertEqual(self.app.stage, "CANCELLED")
+        self.assertEqual(self.app.activeJob, "")
+        self.assertTrue(short_page.isVisible())
+        self.assertEqual(path.read_bytes(), project_bytes_while_running)
+        self.assertFalse(short_output.exists())
+        self.assertTrue(export_button.isEnabled(), "キャンセル後にショート書き出しを再試行できる")
+
     def test_short_mode_gui_export_e2e_renders_vertical_video_audio_and_subtitles(self) -> None:
         project_path = self._load_project(
             segments=[
@@ -13229,6 +13279,45 @@ Window {
         self.assertEqual(self.app.activeJob, "")
         self.assertEqual(_qt_string(self._quick_item(window, "saveSettingsButton"), "text"), "設定を保存")
         self.assertTrue(self._quick_item(window, "transcribeButton").isEnabled())
+
+    def test_normal_render_cancel_from_qml_restores_editing_without_output(self) -> None:
+        path = self._load_project()
+        output = Path(self.app.videoOutputDirectory)
+        self.app._dependencies = RuntimeDependencyStatus(True, True, True, cuda=False)
+        helper_path = Path(__file__).with_name("fake_processing_process.py").resolve()
+
+        def build_wait_render(_config_path: Path, *, project_path: str, output_path: str) -> list[str]:
+            return [sys.executable, "-u", str(helper_path), "--mode", "wait"]
+
+        _, window = self._load_qml()
+        started = QSignalSpy(self.app.process.started)
+        finished = QSignalSpy(self.app.process.finished)
+        with patch("src.workflow_actions.build_gui_render_command", side_effect=build_wait_render):
+            self._click(window, self._quick_item(window, "workspaceHeaderRenderButton"))
+            if started.count() == 0:
+                self.assertTrue(started.wait(10_000), self.app.process.errorString())
+            self.assertTrue(self.app.running)
+            self.assertEqual(self.app.activeJob, "render")
+            project_bytes_while_running = path.read_bytes()
+            self.assertFalse(any(output.glob("*.mp4")))
+
+            progress_panel = self._quick_item(window, "processingProgressPanel")
+            stop_button = self._quick_visual_item(progress_panel, "processingProgressStopButton")
+            self.assertTrue(stop_button.isVisible())
+            self.assertTrue(stop_button.isEnabled())
+            self._click(window, stop_button)
+            if finished.count() == 0:
+                self.assertTrue(finished.wait(10_000), self.app.process.errorString())
+            self.app.processEvents()
+
+        self.assertFalse(self.app.running)
+        self.assertEqual(self.app.process.state(), QProcess.ProcessState.NotRunning)
+        self.assertEqual(self.app.stage, "CANCELLED")
+        self.assertEqual(self.app.activeJob, "")
+        self.assertEqual(path.read_bytes(), project_bytes_while_running)
+        self.assertFalse(any(output.glob("*.mp4")))
+        self.assertEqual(_qt_string(self._quick_item(window, "saveSettingsButton"), "text"), "設定を保存")
+        self.assertTrue(self._quick_item(window, "editSubtitlesButton").isEnabled())
 
     def test_cancelled_followup_transcription_cannot_merge_into_next_project(self) -> None:
         project_a_path = self._load_project()
