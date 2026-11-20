@@ -6394,6 +6394,49 @@ Window {
 
         self.assertEqual(_value_at(load_project(path), 'segments', 0, 'text'), "a日本語")
 
+    @typed_skip_unless_method(shutil.which("ffmpeg") and shutil.which("ffprobe"), "ffmpeg and ffprobe required")
+    def test_inspector_tab_switches_preserve_preview_selection_and_caption_draft(self) -> None:
+        """Inspector切替後もプレビュー位置、選択字幕、本文ドラフトを保つ。"""
+        path, _, audio = self._make_project(segments=[
+            {"id": "first", "start": 0, "end": 4, "text": "first", "speaker": "Speaker_Alice"},
+            {"id": "second", "start": 5, "end": 8, "text": "second", "speaker": "Speaker_Alice"},
+        ], duration_seconds=8)
+        self._generate_black_test_video_with_audio(self.root / "game.mkv", audio, duration_seconds=8)
+        self.assertTrue(self.app._load_project_path(path, update_sources=True))
+        self._prime_audio_preview_cache()
+        _, window = self._load_qml()
+        player = self.gui.find_object(window, "mainWorkspacePlayer", QMediaPlayer)
+        self.gui.wait_until(lambda: player.duration() >= 7_500, description="Inspector preview media")
+        player.setPosition(6_500)
+        self.app.processEvents()
+        self.app.selectSegment(1)
+        self.app.processEvents()
+        settings_tab = self._quick_item(window, "inspectorSettingsTabButton")
+        codex_tab = self._quick_item(window, "inspectorCodexTabButton")
+        caption = self._quick_visual_item(
+            self._quick_item(window, "workspaceSubtitleSettings"), "workspaceSubtitleTextArea"
+        )
+        with patch.object(self.app.autosave_timer, "start"):
+            self._click(window, caption)
+            QTest.keySequence(window, QKeySequence(QKeySequence.StandardKey.SelectAll))
+            for char in "unsaved draft":
+                QTest.keyClick(window, Qt.Key(ord(char.upper())))
+            self.app.processEvents()
+            self.assertEqual(_qt_string(caption, "text"), "unsaved draft")
+
+            for button, tab in ((codex_tab, "codex"), (settings_tab, "settings"),
+                                (codex_tab, "codex"), (settings_tab, "settings")):
+                self._click(window, button)
+                self.assertEqual(qt_property_value(window, "inspectorTab"), tab)
+                self.app.processEvents()
+                self.assertEqual(player.position(), 6_500)
+                self.assertEqual(self.app.selectedSegmentIndex, 1)
+                self.assertEqual(self.app.segmentAt(1)["id"], "second")
+                self.assertEqual(self.app.segmentAt(1)["text"], "unsaved draft")
+
+        self._click(window, self._quick_item(window, "workspaceHeaderSaveButton"))
+        self.assertEqual(_value_at(load_project(path), 'segments', 1, 'text'), "unsaved draft")
+
     def test_speaker_color_waits_for_uncommitted_ime_text(self) -> None:
         path = self._load_project()
         _, window = self._load_qml()
