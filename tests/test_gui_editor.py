@@ -13796,10 +13796,12 @@ Window {
         self.app.process.finished.emit(0, QProcess.ExitStatus.NormalExit)
         self.app.processEvents()
         restart_button = self._quick_item(window, "restartApplicationButton")
-        self.assertTrue(_qt_bool(restart_button, "visible"))
-        # 表示直後のレイアウトと入力判定を確定してから実クリックする。
+        # visible can become true before the modal has finished opening.
         restart_button.ensurePolished()
-        self.gui.process_events()
+        self.gui.wait_until(
+            lambda: _qt_bool(dialog, "opened") and restart_button.isVisible() and restart_button.isEnabled(),
+            description="更新完了ダイアログが再起動操作を受け付ける",
+        )
         with patch("src.gui_updates_facade.subprocess.Popen") as popen, patch.object(self.app, "quit") as quit:
             self._click(window, restart_button)
             popen.assert_called_once()
