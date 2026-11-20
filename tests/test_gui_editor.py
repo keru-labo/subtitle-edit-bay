@@ -9994,6 +9994,7 @@ Window {
                 self.app.processEvents()
                 self.assertFalse(send_button.isEnabled(), (start_value, end_value))
                 self.assertTrue(range_hint.isVisible())
+                self.assertLessEqual(range_hint.width(), panel.width() - 16)
                 self._assert_quick_item_within(panel, range_hint)
                 if start_value == "":
                     self.assertFalse(qt_property_value(start, "acceptableInput"))

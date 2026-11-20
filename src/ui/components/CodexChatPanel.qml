@@ -238,6 +238,7 @@ Rectangle {
                 objectName: "codexChatRangeValidationHint"
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
+                Layout.maximumWidth: Math.max(0, panel.width - 16)
                 visible: editScope.currentValue === "time_range" && !panel.validTimeRange()
                 text: "0〜86400秒で、終了は開始より後にしてください"
                 color: panel.errorColor
