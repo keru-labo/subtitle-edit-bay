@@ -400,6 +400,7 @@ jobs:
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_mode_gui_adds_direct_range_clip_when_segments_exist
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_mode_keeps_intentionally_empty_clip_list_on_reopen
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_mode_segment_picker_uses_the_subtitle_model
+          tests.test_gui_editor.GuiEditorRegressionTests.test_short_bgm_file_dialog_cancel_preserves_selection_and_allows_retry
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_mode_settings_controls_save_round_trip
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_mode_sliders_follow_full_drag_and_save
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_workspace_open_waits_for_uncommitted_ime_text
