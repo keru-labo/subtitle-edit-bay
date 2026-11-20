@@ -57,6 +57,7 @@ from src.gui_codex_chat_state import CodexChatSnapshot
 from src.gui_codex_state import CodexSessionSnapshot
 from src.gui_state import SourceSelection
 from src.gui_transcription_context_state import gui_transcription_context_state_from_config
+from src.transcription_hint_workflow import build_craig_hint_plan_from_context, resolve_confirmed_dictionary_path
 from src.runtime_dependencies import RuntimeDependencyStatus
 from src.highlight_candidates import HighlightCandidate
 from src.short_video_schema import ShortVideo
@@ -10226,6 +10227,63 @@ Window {
         saved = decode_json(self.app.gui_config_path.read_text(encoding="utf-8"))
         self.assertIsNone(_value_at(saved, "craig_pipeline", "transcription_context", "dictionary_path"))
         self.assertFalse(_value_at(saved, "craig_pipeline", "transcription_context", "dictionary_confirmed"))
+
+    def _exercise_transcription_context_launch(self, *, enable_context: bool) -> dict[str, object]:
+        self._set_ready_sources()
+        self.app._dependencies = RuntimeDependencyStatus(True, True, True, cuda=True)
+        self.app.dependenciesChanged.emit()
+        dictionary_path = self.root / "game-terms.json"
+        dictionary_path.write_text(
+            '{"game_title":"Test Game","terms":[{"term":"ConfirmedSecret","enabled":true}]}',
+            encoding="utf-8",
+        )
+        self.app.setTranscriptionContext(
+            {
+                "game_title": "Test Game",
+                "dictionary_path": str(dictionary_path),
+                "dictionary_confirmed": not enable_context,
+                "web_dictionary_enabled": not enable_context,
+                "web_dictionary_candidates": ["CandidateSecret"],
+                "web_dictionary_terms": ["CandidateSecret"],
+            }
+        )
+        _, window = self._load_qml()
+        self._click(window, self._quick_item(window, "startScreenDictionaryButton"))
+        self._click(window, self._quick_item(window, "transcriptionDictionaryConfirmedSwitch"))
+        self._click(window, self._quick_item(window, "transcriptionWebDictionarySwitch"))
+        self._click(window, self._quick_item(window, "transcriptionDictionaryBackButton"))
+
+        with patch("src.gui.probe_media_duration", return_value=30.0), patch.object(
+            self.app.workflow, "_start_command"
+        ) as start:
+            self._click(window, self._quick_item(window, "startWithTranscriptionButton"))
+
+        start.assert_called_once()
+        config = decode_json(self.app.gui_config_path.read_text(encoding="utf-8"))
+        context = _string_project(_value_at(config, "craig_pipeline", "transcription_context"))
+        command = _mock_command(start)
+        self.assertIn("--run", command)
+        self.assertEqual(command[command.index("--config") + 1], str(self.app.gui_config_path))
+        return context
+
+    def test_transcription_launch_uses_only_enabled_dictionary_context(self) -> None:
+        """Windows GUI CI必須: 実際の開始操作から有効な辞書設定だけがヒントになる。"""
+        context = self._exercise_transcription_context_launch(enable_context=True)
+        self.assertTrue(_value_at(context, "dictionary_confirmed"))
+        self.assertTrue(_value_at(context, "web_dictionary_enabled"))
+        self.assertEqual(_value_at(context, "dictionary_path"), str(self.root / "game-terms.json"))
+        plan = build_craig_hint_plan_from_context(context, base_dir=self.root)
+        self.assertIn("ConfirmedSecret", plan.hint.hotwords)
+        self.assertIn("CandidateSecret", plan.hint.hotwords)
+
+    def test_transcription_launch_leaves_unconfirmed_context_inert(self) -> None:
+        context = self._exercise_transcription_context_launch(enable_context=False)
+        self.assertFalse(_value_at(context, "dictionary_confirmed"))
+        self.assertFalse(_value_at(context, "web_dictionary_enabled"))
+        self.assertIsNone(resolve_confirmed_dictionary_path(context, base_dir=self.root))
+        plan = build_craig_hint_plan_from_context(context, base_dir=self.root)
+        self.assertNotIn("ConfirmedSecret", plan.hint.hotwords)
+        self.assertNotIn("CandidateSecret", plan.hint.hotwords)
 
     def test_web_dictionary_candidate_actions_save_and_reload_from_screen(self) -> None:
         _, window = self._load_qml()
