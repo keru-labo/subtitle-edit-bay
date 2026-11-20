@@ -347,6 +347,7 @@ jobs:
           tests.test_gui_editor.GuiEditorRegressionTests.test_pending_start_time_survives_row_recycling_during_processing
           tests.test_gui_editor.GuiEditorRegressionTests.test_pending_text_survives_processing_state_change_in_expanded_editor
           tests.test_gui_editor.GuiEditorRegressionTests.test_processing_does_not_start_when_settings_cannot_be_saved
+          tests.test_gui_editor.GuiEditorRegressionTests.test_codex_time_range_invalid_input_stays_local_and_is_not_sent
           tests.test_gui_editor.GuiEditorRegressionTests.test_progress_and_codex_controls_remain_clickable_together
           tests.test_gui_editor.GuiEditorRegressionTests.test_qml_update_dialog_flow
           tests.test_gui_editor.GuiEditorRegressionTests.test_qml_settings_round_trip_and_expanded_popup_fit

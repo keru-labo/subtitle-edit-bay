@@ -9942,6 +9942,79 @@ Window {
         self._click(window, self._quick_item(window, "editorBackButton"))
         self.assertFalse(self._quick_item(window, "editorPage").isVisible())
 
+    def test_codex_time_range_invalid_input_stays_local_and_is_not_sent(self) -> None:
+        self._load_project()
+        authenticated = CodexChatSnapshot(
+            connection_state="ready",
+            auth_state="authenticated",
+            auth_label="ChatGPT",
+            models=({"id": "model-a", "label": "Model A"},),
+            selected_model="model-a",
+        )
+        self.app._codex_chat._snapshot = authenticated
+        self.app._on_codex_chat_state(authenticated)
+        _, window = self._load_qml()
+        self.gui.resize(window, 1220, 760)
+        scope = self._quick_item(window, "codexChatEditScope")
+        self._click(window, scope)
+        for _ in range(3):
+            QTest.keyClick(window, Qt.Key.Key_Down)
+        QTest.keyClick(window, Qt.Key.Key_Return)
+        self.assertEqual(qt_property_value(scope, "currentValue"), "time_range")
+        start = self._quick_item(window, "codexChatRangeStart")
+        end = self._quick_item(window, "codexChatRangeEnd")
+        message = self._quick_item(window, "codexChatInput")
+        send_button = self._quick_item(window, "codexChatSendButton")
+        panel = self._quick_item(window, "codexChatPanel")
+        range_hint = self._quick_item(window, "codexChatRangeValidationHint")
+        message.setProperty("text", "この範囲だけ編集して")
+        self.app.processEvents()
+
+        def type_value(field: QQuickItem, value: str) -> None:
+            field.forceActiveFocus()
+            self.app.processEvents()
+            self.assertTrue(field.hasActiveFocus(), field.objectName())
+            QTest.keySequence(window, QKeySequence(QKeySequence.StandardKey.SelectAll))
+            QTest.keyClick(window, Qt.Key.Key_Backspace)
+            for char in value:
+                QTest.keyClick(window, Qt.Key.Key_Period if char == "." else Qt.Key(ord(char)))
+            self.assertEqual(_qt_string(field, "text"), value)
+
+        invalid_ranges = (
+            ("8.000", "2.000"),
+            ("2.000", "2.000"),
+            ("", "8.000"),
+            ("0.000", ""),
+            ("0.000", "86400.001"),
+        )
+        with patch.object(self.app.ai, "sendCodexChatMessage", return_value=True) as send:
+            for start_value, end_value in invalid_ranges:
+                type_value(start, start_value)
+                type_value(end, end_value)
+                self.app.processEvents()
+                self.assertFalse(send_button.isEnabled(), (start_value, end_value))
+                self.assertTrue(range_hint.isVisible())
+                self.assertLessEqual(range_hint.width(), panel.width() - 16)
+                self._assert_quick_item_within(panel, range_hint)
+                if start_value == "":
+                    self.assertFalse(qt_property_value(start, "acceptableInput"))
+                if end_value in {"", "86400.001"}:
+                    self.assertFalse(qt_property_value(end, "acceptableInput"))
+                self._click_disabled(window, send_button)
+                send.assert_not_called()
+                self.assertEqual(_qt_string(message, "text"), "この範囲だけ編集して")
+                self.assertEqual(_qt_string(start, "text"), start_value)
+                self.assertEqual(_qt_string(end, "text"), end_value)
+
+            type_value(start, "2.000")
+            type_value(end, "8.000")
+            self.app.processEvents()
+            self.assertTrue(send_button.isEnabled())
+            self.assertFalse(range_hint.isVisible())
+            self._click(window, send_button)
+            send.assert_called_once_with("この範囲だけ編集して", "time_range", 2.0, 8.0)
+            self.assertEqual(_qt_string(message, "text"), "")
+
     def test_progress_and_codex_controls_remain_clickable_together(self) -> None:
         self._load_project()
         _, window = self._load_qml()

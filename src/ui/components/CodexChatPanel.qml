@@ -32,6 +32,17 @@ Rectangle {
         return backend && backend.ai.aiChatProviderName ? backend.ai.aiChatProviderName : "AI"
     }
 
+    function validTimeRange() {
+        if (editScope.currentValue !== "time_range")
+            return true
+        if (!rangeStart.text.trim() || !rangeEnd.text.trim()
+                || !rangeStart.acceptableInput || !rangeEnd.acceptableInput)
+            return false
+        var start = Number(rangeStart.text)
+        var end = Number(rangeEnd.text)
+        return isFinite(start) && isFinite(end) && end > start
+    }
+
     function busy() {
         return backend && (["sending", "streaming", "stopping"].indexOf(backend.ai.codexChatState) >= 0
             || ["starting", "authenticating", "running"].indexOf(backend.ai.codexState) >= 0
@@ -223,6 +234,18 @@ Rectangle {
                 Text { text: "秒"; color: panel.mutedColor; font.pixelSize: 9 }
             }
 
+            Text {
+                objectName: "codexChatRangeValidationHint"
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                Layout.maximumWidth: Math.max(0, panel.width - 16)
+                visible: editScope.currentValue === "time_range" && !panel.validTimeRange()
+                text: "0〜86400秒で、終了は開始より後にしてください"
+                color: panel.errorColor
+                font.pixelSize: 9
+                wrapMode: Text.Wrap
+            }
+
             RowLayout {
                 Layout.fillWidth: true
                 Text {
@@ -370,7 +393,10 @@ Rectangle {
                         Layout.maximumWidth: 48
                         text: "送信"
                         enabled: panel.authenticated() && !panel.busy() && chatInput.text.trim().length > 0
+                            && panel.validTimeRange()
                         onClicked: {
+                            if (!panel.validTimeRange())
+                                return
                             var message = chatInput.text
                             var accepted = backend.ai.sendCodexChatMessage(
                                 message,
