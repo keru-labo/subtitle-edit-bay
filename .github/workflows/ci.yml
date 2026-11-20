@@ -377,6 +377,7 @@ jobs:
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_clip_time_is_saved_before_deleting_another_clip
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_clip_time_stays_with_clip_when_reordered_before_return
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_clip_time_survives_settings_change_before_return
+          tests.test_gui_editor.GuiEditorRegressionTests.test_short_background_color_dialog_cancel_preserves_value_and_allows_retry
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_background_color_dialog_applies_selected_color
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_export_saves_bgm_time_typed_without_return
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_export_saves_clip_time_typed_without_return

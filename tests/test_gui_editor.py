@@ -14206,6 +14206,39 @@ Window {
         self._click(window, self._quick_item(window, "workspaceHeaderSaveButton"))
         self.assertEqual(_value_at(load_project(path), "short_video", "global_background_color"), "#123456")
 
+    def test_short_background_color_dialog_cancel_preserves_value_and_allows_retry(self) -> None:
+        path = self._load_project()
+        self.app.initializeShortVideoClips()
+        self.assertTrue(self.app.shortVideo.setShortVideoGlobalBackgroundColor("224466"))
+        self.assertTrue(self.app.saveProject())
+        initial_saved = _value_at(load_project(path), "short_video", "global_background_color")
+        self.assertEqual(initial_saved, "#224466")
+
+        _, window = self._load_qml()
+        self._click(window, self._quick_item(window, "workspaceHeaderShortButton"))
+        button = self._quick_item(window, "shortModeBackgroundColorButton")
+        self._click(window, button)
+        dialog = self.gui.find_object(window, "shortModeBackgroundColorDialog")
+        self.assertTrue(_qt_bool(dialog, "visible"))
+        dialog.setProperty("selectedColor", QColor("#ABCDEF"))
+
+        with patch.object(self.app.shortVideo, "setShortVideoGlobalBackgroundColor") as set_color:
+            self.assertTrue(QMetaObject.invokeMethod(dialog, "reject"))
+            self.app.processEvents()
+            self.assertFalse(_qt_bool(dialog, "visible"))
+            set_color.assert_not_called()
+        self.assertEqual(self.app.shortVideo.shortVideoSettings["global_background_color"], initial_saved)
+        self.assertEqual(_value_at(load_project(path), "short_video", "global_background_color"), initial_saved)
+        self.assertEqual(_qt_string(self._quick_item(window, "shortModeBackgroundColorField"), "text"), initial_saved)
+
+        self._click(window, button)
+        self.assertTrue(_qt_bool(dialog, "visible"))
+        dialog.setProperty("selectedColor", QColor("#ABCDEF"))
+        self.assertTrue(QMetaObject.invokeMethod(dialog, "accept"))
+        self.assertEqual(self.app.shortVideo.shortVideoSettings["global_background_color"], "#ABCDEF")
+        self.assertTrue(self.app.saveProject())
+        self.assertEqual(_value_at(load_project(path), "short_video", "global_background_color"), "#ABCDEF")
+
     def test_short_background_color_dialog_applies_selected_color(self) -> None:
         self._load_project()
         _, window = self._load_qml()
