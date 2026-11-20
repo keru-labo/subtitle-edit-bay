@@ -399,6 +399,7 @@ jobs:
           tests.test_gui_editor.GuiEditorRegressionTests.test_source_popup_drop_target_imports_video
           tests.test_gui_editor.GuiEditorRegressionTests.test_source_relink_is_locked_during_processing_and_recovers
           tests.test_gui_editor.GuiEditorRegressionTests.test_source_reset_and_direct_change_keep_unsaved_project_on_save_failure
+          tests.test_gui_editor.GuiEditorRegressionTests.test_save_as_dialog_cancel_keeps_current_project_and_unsaved_edits
           tests.test_gui_editor.GuiEditorRegressionTests.test_source_settings_waits_for_uncommitted_ime_text
           tests.test_gui_editor.GuiEditorRegressionTests.test_source_setup_passes_selected_video_track_and_manual_offset_to_transcription
           tests.test_gui_editor.GuiEditorRegressionTests.test_source_speaker_color_dialog_applies_and_cancel_preserves_color
