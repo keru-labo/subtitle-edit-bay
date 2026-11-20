@@ -7501,6 +7501,36 @@ Window {
         self._click(window, self._quick_item(window, "workspaceSubtitleSaveButton"))
         self.assertEqual(_value_at(load_project(path), 'segments', 0, 'text'), "edited")
 
+    def test_expanded_textarea_undo_stays_local_before_project_history_undo(self) -> None:
+        """本文欄の標準Undoは入力を戻し、別字幕の編集履歴を消費しない。"""
+        self._load_project(segments=[
+            {"id": "first", "start": 0, "end": 2, "text": "first"},
+            {"id": "second", "start": 2, "end": 4, "text": "second"},
+        ])
+        self.app.updateSegment(1, {"text": "separate history edit"})
+        self.app.selectSegment(0)
+        _, window = self._load_qml()
+        self._click(window, self._quick_item(window, "editSubtitlesButton"))
+        caption = self._quick_visual_item(self._quick_item(window, "captionTable"), "captionTextArea")
+        self._click(window, caption)
+        self.assertTrue(caption.hasActiveFocus())
+        QTest.keySequence(window, QKeySequence(QKeySequence.StandardKey.SelectAll))
+        for char in "local draft":
+            QTest.keyClick(window, Qt.Key(ord(char.upper())))
+        self.app.processEvents()
+        self.assertEqual(_qt_string(caption, "text"), "local draft")
+
+        QTest.keySequence(window, QKeySequence(QKeySequence.StandardKey.Undo))
+        self.app.processEvents()
+        self.assertEqual(_qt_string(caption, "text"), "first")
+        self.assertEqual(self.app.segmentAt(0)["text"], "first")
+        self.assertEqual(self.app.segmentAt(1)["text"], "separate history edit")
+        self.assertTrue(self.app.subtitles.canUndo)
+
+        # Explicit editor Undo still applies the prior independent project edit.
+        self._click(window, self._quick_item(window, "undoCaptionButton"))
+        self.assertEqual(self.app.segmentAt(1)["text"], "second")
+
     def test_pending_text_add_commits_original_caption_before_new_row(self) -> None:
         path, window = self._prepare_pending_subtitle_text()
         self.app.setEditorPlayhead(9_000, "source")
@@ -10878,6 +10908,50 @@ Window {
         self.assertFalse(page.isVisible())
         self.assertEqual(self.app.transcriptionContext["game_title"], "pending game")
         self.assertTrue(config_path.is_file())
+
+    def test_dictionary_save_and_escape_shortcuts_commit_pending_input(self) -> None:
+        """Windows GUI CI必須: 標準保存キーは画面に留まり、Escapeは保存して閉じる。"""
+        _, window = self._load_qml()
+        self._click(window, self._quick_item(window, "startScreenDictionaryButton"))
+        page = self._quick_item(window, "transcriptionDictionaryPage")
+        title_field = self._quick_visual_item(page, "transcriptionGameTitleField")
+        title_field.forceActiveFocus()
+        self.assertTrue(title_field.hasActiveFocus())
+
+        def type_title(value: str) -> None:
+            title_field.forceActiveFocus()
+            self.app.processEvents()
+            self.assertTrue(title_field.hasActiveFocus())
+            QTest.keySequence(window, QKeySequence(QKeySequence.StandardKey.SelectAll))
+            QTest.keyClick(window, Qt.Key.Key_Backspace)
+            for char in value:
+                QTest.keyClick(window, Qt.Key(ord(char.upper())))
+            self.app.processEvents()
+            self.assertEqual(_qt_string(title_field, "text"), value)
+
+        config_path = self.app.gui_config_path
+        type_title("keyboard saved")
+        QTest.keySequence(window, QKeySequence(QKeySequence.StandardKey.Save))
+        self.app.processEvents()
+        self.assertTrue(page.isVisible(), "Standard Save must save without leaving dictionary screen")
+        saved_after_shortcut = decode_json(config_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            _value_at(saved_after_shortcut, "craig_pipeline", "transcription_context", "game_title"),
+            "keyboard saved",
+        )
+        self.assertEqual(self.app.transcriptionContext["game_title"], "keyboard saved")
+
+        type_title("escape saved")
+        self.assertEqual(self.app.transcriptionContext["game_title"], "keyboard saved")
+        QTest.keyClick(window, Qt.Key.Key_Escape)
+        self.gui.wait_until(lambda: not page.isVisible(), description="dictionary screen closes after Escape")
+        self.assertFalse(page.isVisible())
+        self.assertEqual(self.app.transcriptionContext["game_title"], "escape saved")
+        saved_after_escape = decode_json(config_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            _value_at(saved_after_escape, "craig_pipeline", "transcription_context", "game_title"),
+            "escape saved",
+        )
 
     def test_closing_dictionary_window_saves_pending_input(self) -> None:
         _, window = self._load_qml()
