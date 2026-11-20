@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from itertools import product
 import shutil
 import tempfile
 import threading
@@ -300,6 +301,133 @@ class ProjectEditorControllerTests(TypedTestCase):
         self.assertEqual(controller.project_revision, revision)
         self.assertTrue(controller.can_redo)
         self.assertEqual(events, [])
+
+    def test_bounded_segment_action_sequences_match_list_history_oracle(self) -> None:
+        """Small deterministic action sequences against a model-level state oracle."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            controller = ProjectEditorController(root)
+            self.addCleanup(controller.shutdown)
+            project_payload = create_project(
+                video_path=root / "capture.mp4",
+                output_dir=root / "out",
+                duration_seconds=12.0,
+                segments=[
+                    {"id": "segment-a", "start": 0.0, "end": 1.0, "text": "A0"},
+                    {"id": "segment-b", "start": 3.0, "end": 4.0, "text": "B0"},
+                ],
+            )
+            if not is_string_object_dict(project_payload):
+                self.fail("created project must be an object with string keys")
+            project = project_payload
+            actions = ("edit_a_1", "edit_a_2", "edit_b_1", "undo", "redo", "noop", "reject")
+
+            def segment_by_id(segment_id: str) -> dict[str, object]:
+                return next(item for item in _segments(controller.project) if item["id"] == segment_id)
+
+            for action_sequence in product(actions, repeat=3):
+                controller.adopt_loaded_project(
+                    deepcopy(project), root / "capture.subtitle-project.json"
+                )
+                state = {"segment-a": "A0", "segment-b": "B0"}
+                undo_states: list[dict[str, str]] = []
+                redo_states: list[dict[str, str]] = []
+                revision = controller.project_revision
+                dirty = False
+
+                for action in action_sequence:
+                    if action in {"edit_a_1", "edit_a_2", "edit_b_1"}:
+                        segment_id = "segment-b" if action == "edit_b_1" else "segment-a"
+                        new_text = {"edit_a_1": "A1", "edit_a_2": "A2", "edit_b_1": "B1"}[action]
+                        current = deepcopy(segment_by_id(segment_id))
+                        updated = {**current, "text": new_text}
+                        controller.commit_segment_change([current], [updated], segment_id)
+                        if state[segment_id] != new_text:
+                            undo_states.append(dict(state))
+                            redo_states.clear()
+                            state[segment_id] = new_text
+                            revision += 1
+                            dirty = True
+                    elif action == "undo":
+                        changed = controller.undo()
+                        self.assertEqual(changed, bool(undo_states))
+                        if undo_states:
+                            redo_states.append(dict(state))
+                            state = undo_states.pop()
+                            revision += 1
+                            dirty = True
+                    elif action == "redo":
+                        changed = controller.redo()
+                        self.assertEqual(changed, bool(redo_states))
+                        if redo_states:
+                            undo_states.append(dict(state))
+                            state = redo_states.pop()
+                            revision += 1
+                            dirty = True
+                    elif action == "noop":
+                        current = deepcopy(segment_by_id("segment-a"))
+                        controller.commit_segment_change([current], [current])
+                    else:
+                        first = deepcopy(segment_by_id("segment-a"))
+                        second = deepcopy(segment_by_id("segment-b"))
+                        duplicate = {**second, "id": "segment-a"}
+                        with self.assertRaises(SubtitleProjectError):
+                            controller.commit_segment_change([], [first, duplicate])
+
+                    with self.subTest(actions=action_sequence, action=action):
+                        actual = {str(item["id"]): str(item["text"]) for item in _segments(controller.project)}
+                        self.assertEqual(actual, state)
+                        self.assertEqual(controller.can_undo, bool(undo_states))
+                        self.assertEqual(controller.can_redo, bool(redo_states))
+                        self.assertEqual(controller.project_revision, revision)
+                        self.assertEqual(controller.project_dirty, dirty)
+
+    def test_undo_history_cap_keeps_newest_100_and_branch_discards_redo(self) -> None:
+        controller = self._editing_controller()
+        revision = controller.project_revision
+        for index in range(1, 102):
+            current = deepcopy(_segments(controller.project)[0])
+            controller.commit_segment_change([current], [{**current, "text": f"edit-{index}"}])
+        revision += 101
+        self.assertEqual(_segments(controller.project)[0]["text"], "edit-101")
+        self.assertTrue(controller.can_undo)
+        self.assertFalse(controller.can_redo)
+
+        for undo_count in range(1, 101):
+            self.assertTrue(controller.undo())
+            revision += 1
+            expected_text = f"edit-{101 - undo_count}"
+            self.assertEqual(_segments(controller.project)[0]["text"], expected_text)
+            self.assertEqual(controller.project_revision, revision)
+            self.assertEqual(controller.can_undo, undo_count < 100)
+            self.assertTrue(controller.can_redo)
+
+        self.assertFalse(controller.undo())
+        self.assertEqual(_segments(controller.project)[0]["text"], "edit-1")
+        self.assertEqual(controller.project_revision, revision)
+        self.assertTrue(controller.can_redo)
+
+        for redo_count in range(1, 101):
+            self.assertTrue(controller.redo())
+            revision += 1
+            self.assertEqual(_segments(controller.project)[0]["text"], f"edit-{redo_count + 1}")
+            self.assertEqual(controller.project_revision, revision)
+        self.assertEqual(_segments(controller.project)[0]["text"], "edit-101")
+        self.assertTrue(controller.can_undo)
+        self.assertFalse(controller.can_redo)
+
+        self.assertTrue(controller.undo())
+        revision += 1
+        self.assertEqual(_segments(controller.project)[0]["text"], "edit-100")
+        self.assertTrue(controller.can_redo)
+        current = deepcopy(_segments(controller.project)[0])
+        controller.commit_segment_change([current], [{**current, "text": "branch"}])
+        revision += 1
+        self.assertEqual(_segments(controller.project)[0]["text"], "branch")
+        self.assertEqual(controller.project_revision, revision)
+        self.assertTrue(controller.can_undo)
+        self.assertFalse(controller.can_redo)
+        self.assertFalse(controller.redo())
 
     def test_callbacks_observe_committed_history_revision_and_document(self) -> None:
         observed: list[tuple[int, bool, bool, object]] = []
