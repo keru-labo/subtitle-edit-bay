@@ -362,6 +362,7 @@ jobs:
           tests.test_gui_editor.GuiEditorRegressionTests.test_sequence_remove_button_undo_redo_and_save_from_screen
           tests.test_gui_editor.GuiEditorRegressionTests.test_sequence_playhead_and_zoom_sliders_follow_drag
           tests.test_gui_editor.GuiEditorRegressionTests.test_sequence_time_typed_without_return_is_saved_from_header
+          tests.test_gui_editor.GuiEditorRegressionTests.test_sequence_invalid_typed_trim_is_rejected_and_recovers
           tests.test_gui_editor.GuiEditorRegressionTests.test_sequence_transition_controls_from_card_are_saved
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_back_commits_clip_time_typed_without_return
           tests.test_gui_editor.GuiEditorRegressionTests.test_short_background_color_survives_volume_change_before_return
