@@ -274,6 +274,7 @@ jobs:
           tests.test_gui_editor.GuiEditorRegressionTests.test_inspector_tab_switches_preserve_preview_selection_and_caption_draft
           tests.test_gui_editor.GuiEditorRegressionTests.test_ai_typed_audio_proposal_works_without_chat_model
           tests.test_gui_editor.GuiEditorRegressionTests.test_expanded_editor_delete_undo_redo_shortcuts_use_selected_subtitle
+          tests.test_gui_editor.GuiEditorRegressionTests.test_expanded_textarea_undo_stays_local_before_project_history_undo
           tests.test_gui_editor.GuiEditorRegressionTests.test_ai_rejected_typed_actions_keep_draft
           tests.test_gui_editor.GuiEditorRegressionTests.test_ai_subtitle_request_without_project_is_not_accepted
           tests.test_gui_editor.GuiEditorRegressionTests.test_audio_proposal_requires_explicit_click_to_mute_every_output
@@ -314,6 +315,7 @@ jobs:
           tests.test_gui_editor.GuiEditorRegressionTests.test_dictionary_open_waits_for_uncommitted_ime_text
           tests.test_gui_editor.GuiEditorRegressionTests.test_dictionary_save_failure_keeps_window_open_for_retry
           tests.test_gui_editor.GuiEditorRegressionTests.test_dictionary_shortcuts_preserve_pending_input_during_processing
+          tests.test_gui_editor.GuiEditorRegressionTests.test_dictionary_save_and_escape_shortcuts_commit_pending_input
           tests.test_gui_editor.GuiEditorRegressionTests.test_empty_short_mode_gui_adds_range_clip_and_enables_export
           tests.test_gui_editor.GuiEditorRegressionTests.test_error_copy_preserves_failure_after_settings_save_and_drains_output
           tests.test_gui_editor.GuiEditorRegressionTests.test_expanded_back_waits_for_uncommitted_ime_text
