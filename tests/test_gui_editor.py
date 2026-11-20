@@ -3324,6 +3324,79 @@ Window {
         self.assertEqual(saved_segments[0]["text"], "変更しない")
         self.assertEqual(saved_segments[1]["text"], "選択対象")
 
+    def test_stale_ai_subtitle_proposal_is_rejected_after_screen_edit(self) -> None:
+        path = self._load_project(segments=[
+            {"id": "proposal-target", "start": 0, "end": 1, "text": "元の字幕"},
+        ])
+        authenticated = CodexChatSnapshot(
+            connection_state="ready", auth_state="authenticated", auth_label="ChatGPT",
+        )
+        self.app._codex_chat._snapshot = authenticated
+        self.app._on_codex_chat_state(authenticated)
+        revision = self.app._project_revision
+        self.app._codex_proposal = {
+            "summary": "古い変更案",
+            "warnings": [],
+            "base_revision": revision,
+            "operations": [{
+                "id": "stale-edit",
+                "type": "update_segment",
+                "segment_id": "proposal-target",
+                "changes": {"text": "古い提案の値"},
+            }],
+        }
+        self.app.codexProposalChanged.emit()
+        _, window = self._load_qml()
+        self._click(window, self._quick_item(window, "editSubtitlesButton"))
+        table = self._quick_item(window, "captionTable")
+        caption = self._quick_visual_item(table, "captionTextArea")
+        with patch.object(self.app.autosave_timer, "start"):
+            self._click(window, caption)
+            QTest.keySequence(window, QKeySequence(QKeySequence.StandardKey.SelectAll))
+            commit = QInputMethodEvent("", [])
+            commit.setCommitString("最新の画面編集")
+            QCoreApplication.sendEvent(caption, commit)
+            self._click(window, self._quick_item(window, "editorBackButton"))
+
+        self.assertEqual(self.app.subtitleSegments[0]["text"], "最新の画面編集")
+        self.assertGreater(self.app._project_revision, revision)
+        self._click(window, self._quick_item(window, "workspaceHeaderSaveButton"))
+        saved_before_stale_apply = path.read_bytes()
+        undo_count_before_stale_apply = len(self.app._undo_stack)
+        codex_tab = self._quick_item(window, "inspectorCodexTabButton")
+        if not codex_tab.isVisible():
+            self._click(window, self._quick_item(window, "codexChatToggleButton"))
+        self._click(window, codex_tab)
+
+        proposal_list = self._quick_item(window, "codexProposalList")
+        self.gui.wait_until(
+            lambda: _qt_number(proposal_list, "count") == 1,
+            description="古い字幕提案が画面に残る",
+        )
+        self._click(window, self._quick_item(window, "codexApplyButton"))
+        self.assertEqual(self.app.subtitleSegments[0]["text"], "最新の画面編集")
+        self.assertEqual(len(self.app._undo_stack), undo_count_before_stale_apply)
+        self.assertEqual(path.read_bytes(), saved_before_stale_apply)
+        self.assertIn("revision", self.app.status.lower())
+        self.assertEqual(_qt_number(proposal_list, "count"), 1)
+
+        self.app._codex_proposal = {
+            "summary": "新しい変更案",
+            "warnings": [],
+            "base_revision": self.app._project_revision,
+            "operations": [{
+                "id": "fresh-edit",
+                "type": "update_segment",
+                "segment_id": "proposal-target",
+                "changes": {"text": "新しい提案の値"},
+            }],
+        }
+        self.app.codexProposalChanged.emit()
+        self.app.processEvents()
+        self._click(window, self._quick_item(window, "codexApplyButton"))
+        self.assertEqual(self.app.subtitleSegments[0]["text"], "新しい提案の値")
+        self.assertEqual(len(self.app._undo_stack), undo_count_before_stale_apply + 1)
+
     def test_ai_proposals_are_locked_during_processing_and_recover(self) -> None:
         path = self._load_project()
         authenticated = CodexChatSnapshot(
