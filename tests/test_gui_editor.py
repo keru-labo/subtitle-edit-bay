@@ -5124,6 +5124,38 @@ Window {
         self._click(window, self._quick_item(window, "settingsPopupCloseButton"))
         self.assertFalse(qt_property_value(window, "settingsExpanded"))
 
+    def test_qml_settings_write_failure_keeps_draft_for_retry(self) -> None:
+        """設定ファイル書き込み失敗後も、画面の編集値を再試行できる。"""
+        self._load_project()
+        _, window = self._load_qml()
+        self._click(window, self._quick_item(window, "settingsToggleButton"))
+        popup = self.gui.find_object(window, "advancedSettingsPopup")
+        self.assertIsNotNone(popup)
+        self.assertTrue(_qt_bool(popup, "visible"))
+        save_button = self._quick_item(window, "settingsPopupSaveButton")
+        self._click(window, save_button)
+
+        original_settings = deepcopy(self.app.settings)
+        config_path = Path(self.app.gui_config_path)
+        original_config = config_path.read_bytes()
+        quality = self._quick_item(window, "qualitySpin")
+        quality.setProperty("value", 27)
+        self.app.processEvents()
+
+        with patch("src.gui_settings_controller.write_gui_runtime_config", side_effect=OSError("disk full")):
+            self._click(window, save_button)
+            self.assertTrue(_qt_bool(popup, "visible"))
+            self.assertEqual(qt_property_value(quality, "value"), 27)
+            self.assertEqual(self.app.settings, original_settings)
+            self.assertEqual(config_path.read_bytes(), original_config)
+            self.assertIn("disk full", self.app.status)
+
+        self._click(window, save_button)
+        self.assertTrue(_qt_bool(popup, "visible"))
+        self.assertEqual(self.app.settings["nvenc_cq"], 27)
+        saved_config = decode_json(config_path.read_text(encoding="utf-8"))
+        self.assertEqual(_value_at(saved_config, "shared", "nvenc_cq"), 27)
+
     def test_render_quality_normalization_and_lufs_save_from_settings_screen(self) -> None:
         self._load_project()
         _, window = self._load_qml()
